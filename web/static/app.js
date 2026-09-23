@@ -155,7 +155,7 @@ function renderResults(r) {
   const root = $("#results");
   const pair = (...cards) => el("div", { class: "pair" + (cards.length === 2 ? " two" : "") }, cards);
   root.replaceChildren(...[summaryCard(r),
-    r.allosteric ? pair(allostericCard(r), adjustedCard(r)) : null,
+    r.allosteric ? (r.allosteric.adjusted ? pair(allostericCard(r), adjustedCard(r)) : allostericCard(r)) : null,
     pair(transportCard(r), mapCard(r)), rankingCard(r), filesCard(r)].filter(Boolean));
   [...root.children].forEach((c, i) => { c.classList.add("reveal"); c.style.animationDelay = `${i * 40}ms`; });
   redraw();
@@ -169,10 +169,55 @@ function verdictText(stats, what) {
   return `${what}: best most dephased`;
 }
 
+/* ---------- plain-language help ---------- */
+function guide(items) {
+  return el("details", { class: "fold guide" }, el("summary", { text: "How to read this" }),
+    el("ul", { class: "guide-list" }, items.map(([lead, rest]) => el("li", {}, el("strong", { text: lead }), " " + rest))));
+}
+
+// the run's answers to the questions people actually ask, from its own numbers
+function takeaways(r) {
+  const out = [], t = r.transport, a = r.allosteric;
+  const mark = (kind) => el("span", { class: "tk-mark " + kind, text: kind === "yes" ? "yes" : kind === "no" ? "no" : "partly" });
+  const line = (kind, q, a2) => out.push(el("li", {}, mark(kind), el("div", {}, el("div", { class: "tk-q", text: q }), el("div", { class: "tk-a", text: a2 }))));
+  if (a && a.adjusted) {
+    const d = a.adjusted, st = d.stats, best = st.peak_value;
+    line(best >= 0.6 ? "yes" : best > 0.55 ? "partly" : "no", "Does the walk point at the known allosteric site?",
+      best >= 0.6 ? `Yes. Among residues equally far from the active site, it ranks the allosteric ones higher (best ${fmt(best)}, where 0.5 is what closeness alone gives).`
+      : best > 0.55 ? `Only a little. Beyond plain closeness it scores ${fmt(best)} (0.5 is closeness alone).`
+      : `No. Once distance from the active site is taken out it scores ${fmt(best)}, about chance. Whatever the raw score shows here is just closeness.`);
+    if (d.control) {
+      const seeds = d.control.best_seeds || [], beat = seeds.filter((x) => best > x).length;
+      line(best >= 0.55 && beat === seeds.length ? "yes" : best >= 0.55 && beat > 0 ? "partly" : "no", "Is it about this protein's chemistry?",
+        best < 0.55 ? "Nothing to explain: there is no signal beyond distance."
+        : beat === seeds.length ? `Yes. Its best beats the best of all ${seeds.length} random-energy runs, so the hydropathy pattern matters.`
+        : beat > 0 ? `Partly. It beats ${beat} of ${seeds.length} random-energy runs, so much of it comes from the contact network itself.`
+        : `No. Random energies do as well, so the contact network alone explains it.`);
+    }
+    const helps = st.verdict === "hump" && st.gain_abs >= 0.01 && best > 0.55;
+    line(helps ? "yes" : "no", "Does a little noise help find it?",
+      helps ? `Yes. The best is at γ = ${fmtGamma(st.peak_gamma)}, ${fmt(st.gain_abs)} above the better of no noise (${fmt(st.quantum_value)}) and heavy noise (${fmt(st.dephased_value)}).`
+      : st.verdict === "quantum" ? "No. It does best with no noise at all." : best <= 0.55 ? "Not meaningfully: there is little signal to improve."
+      : `Not meaningfully: the peak is less than 0.01 above the ends.`);
+  }
+  const ts = t.stats;
+  if (ts.verdict === "hump") {
+    const c = t.control;
+    line(c && c.exceeds_seeds < c.n_seeds ? "partly" : "yes", "Does noise help the signal travel?",
+      `Yes, it peaks at γ = ${fmtGamma(ts.peak_gamma)} (${pct(ts.gain_rel)} over the better end).` +
+      (c ? (c.exceeds_seeds < c.n_seeds ? ` But random energies show it too (${c.seed_verdicts.filter((v) => v === "hump").length} of ${c.n_seeds}), so this alone says little about this protein.` : " And it is stronger than in every random-energy run.")
+         : " Without the control you cannot tell whether that is special: most networks do this."));
+  } else {
+    line("no", "Does noise help the signal travel?", ts.verdict === "quantum" ? "No, it travels best with no noise." : "No, more noise always did better here.");
+  }
+  if (!a) out.push(el("li", { class: "tk-hint" }, "To test site finding, pick a protein with a known allosteric site (the key button above) or give your own active-site and allosteric residues."));
+  return el("div", { class: "takeaways" }, el("div", { class: "tk-title", text: "What this run says" }), el("ul", {}, out));
+}
+
 function summaryCard(r) {
   const s = r.summary, t = r.transport.stats, a = r.allosteric;
   const pill = (st, what) => el("span", { class: "pill " + (st.verdict === "hump" ? "solid" : "outline"), text: verdictText(st, what) });
-  const stat = (label, value) => el("div", { class: "stat" },
+  const stat = (label, value, hint) => el("div", { class: "stat", title: hint || "" },
     el("div", { class: "stat-label", text: label }), el("div", { class: "stat-value", text: value }));
   const notes = r.notes.length ? el("ul", { class: "notes" }, r.notes.map((n) => el("li", { text: n }))) : null;
   return el("section", { class: "card" },
@@ -180,11 +225,15 @@ function summaryCard(r) {
       el("div", {},
         el("h2", { class: "run-name", text: r.name }),
         el("div", { class: "run-meta", text: `chains ${s.chains.join(", ")}  ·  ran in ${r.elapsed_s} s` })),
-      el("div", { class: "pills" }, a ? pill(a.stats, "allosteric AUC") : null, pill(t, "transport"))),
+      el("div", { class: "pills" }, a ? (a.adjusted ? pill(a.adjusted.stats, "beyond distance") : pill(a.stats, "allosteric AUC")) : null, pill(t, "transport"))),
     el("div", { class: "stats" },
-      stat("Residues", fmtInt(s.residues)), stat("Contacts", fmtInt(s.contacts)),
-      a ? stat("Best AUC", fmt(a.stats.peak_value)) : stat("Transport peak γ", fmtGamma(t.peak_gamma)),
-      a ? stat("Best AUC, same distance", fmt(a.adjusted.stats.peak_value)) : stat("Gain over ends", t.verdict === "hump" ? pct(t.gain_rel) : "none")),
+      stat("Residues", fmtInt(s.residues), "Amino acids in the network (one node each)"),
+      stat("Contacts", fmtInt(s.contacts), "Residue pairs closer than 8 Å; the walker hops along these"),
+      a ? stat("Best AUC", fmt(a.stats.peak_value), "How well the raw signal ranks the known allosteric residues: 0.5 is a coin flip, 1 is perfect")
+        : stat("Transport peak γ", fmtGamma(t.peak_gamma), "The noise level at which most signal reaches the far side"),
+      a && a.adjusted ? stat("Best AUC, same distance", fmt(a.adjusted.stats.peak_value), "The same, but only comparing residues equally far from the active site: 0.5 means closeness explains everything")
+        : stat("Gain over ends", t.verdict === "hump" ? pct(t.gain_rel) : "none", "How much better the best noise level is than both no noise and heavy noise")),
+    takeaways(r),
     el("dl", { class: "facts" },
       el("dt", { text: "Labels" }), el("dd", { text: r.label_note }),
       el("dt", { text: "Transport" }),
@@ -240,6 +289,7 @@ function aucCard(r, blk, o) {
     el("div", { class: "metric-row" }, Object.entries(blk.baselines).map(([k, v]) => el("span", {}, `baseline: ${k}`, el("strong", { text: fmt(v) })))),
     o.extra || null,
     controlNote(blk.control, st),
+    o.guide ? guide(o.guide) : null,
     el("div", { class: "btn-row" },
       download(r.files[o.tag + "_png"], "Download figure", "PNG 300 dpi", true),
       download(r.files[o.tag + "_svg"], "Figure", "SVG"),
@@ -251,6 +301,12 @@ function allostericCard(r) {
   const a = r.allosteric, miss = [...a.missing.active, ...a.missing.allosteric];
   return aucCard(r, a, { id: "chart-allo", tag: "allosteric", yLabel: "ROC AUC, allosteric residues",
     title: "Allosteric recovery versus noise",
+    guide: [
+      ["The solid line:", "for each noise level, how well the signal a residue receives picks out the known allosteric residues. 0.5 is a coin flip, 1.0 would put every allosteric residue first."],
+      ["The dotted lines:", "simple guesses to beat. \u2018Proximity\u2019 ranks residues by how few contacts they are from the active site; \u2018degree\u2019 by how many contacts they have."],
+      ["The grey band:", "the same test with random site energies (mean \u00b1 sd over 5 runs). A solid line inside the band is not about this protein's chemistry."],
+      ["Careful:", "signal fades with distance, so this raw score mostly measures closeness. The \u2018Beyond distance\u2019 chart is the fairer test."],
+    ],
     sub: `Walk from the ${a.n_active} active-site residues; how well the signal each residue receives ranks the ${a.n_allosteric} known allosteric residues among ${a.n_candidates} candidates (ROC AUC; 0.5 is chance).`,
     extra: miss.length || a.name_mismatch.length ? el("p", { class: "note", text:
       `${miss.length ? `Not in the network: ${miss.join(", ")}. ` : ""}${a.name_mismatch.length ? `Name mismatch: ${a.name_mismatch.join("; ")}.` : ""}` }) : null });
@@ -260,6 +316,12 @@ function adjustedCard(r) {
   const d = r.allosteric.adjusted;
   return aucCard(r, d, { id: "chart-adj", tag: "adjusted", yLabel: "ROC AUC, same distance",
     title: "Beyond distance",
+    guide: [
+      ["The idea:", "residues are grouped by how many contacts they are from the active site, and each is only ranked against its own group. Being close no longer helps."],
+      ["0.5 line:", "what closeness alone scores here. Above it, the walk sees something extra about where the allosteric site is; below it, the walk points away from it."],
+      ["Grey band:", "random site energies. Solid line above the band means the protein's hydropathy pattern is doing the work, not just the shape of the network."],
+      ["A hump:", "a peak between the two ends means a moderate amount of noise helps the walk find the site. Flat or highest at an end means it does not."],
+    ],
     sub: `The same test, but each residue is only compared with residues equally far from the active site (${d.shells} distance shells). Plain closeness scores 0.5 here, so anything above it is what the walk adds.` });
 }
 
@@ -280,6 +342,12 @@ function transportCard(r) {
     el("div", { class: "chart-wrap", id: chart.id }),
     statsRow(st, "transport"),
     controlNote(t.control, st),
+    guide([
+      ["The solid line:", "how much of the walker's signal reaches the far part of the protein (residues at least half the network's width away), for each noise level."],
+      ["Left edge, γ = 0:", "a perfectly quantum walk. Waves interfere and can get stuck near the start."],
+      ["Right edge, large γ:", "so much noise that the walker keeps getting \u2018measured\u2019 and barely moves (the quantum Zeno effect)."],
+      ["A hump in between:", "a little noise breaks up the interference and helps the signal spread. This happens in almost any disordered network, which is why the grey random-energy band matters."],
+    ]),
     el("div", { class: "btn-row" },
       download(r.files.hump_png, "Download figure", "PNG 300 dpi", !r.allosteric),
       download(r.files.hump_svg, "Figure", "SVG"),
@@ -428,7 +496,12 @@ function mapCard(r) {
       el("span", { class: "ramp" }, el("span", { class: "mono", text: fmt(lo) }), el("span", { class: "ramp-bar" }), el("span", { class: "mono", text: fmt(hi) })),
       el("span", { class: "ring-key" }, ringKey("source"), el("span", { text: fromActive ? "active site" : `start ${r.summary.walk_from}` })),
       r.allosteric ? el("span", { class: "ring-key" }, ringKey("other"), el("span", { text: "known allosteric" })) : null),
-    el("div", { class: "map-wrap", id: "map" }));
+    el("div", { class: "map-wrap", id: "map" }),
+    guide([
+      ["Each dot:", "one residue, placed at its real 3D position flattened onto the protein's two longest axes. Lines are contacts."],
+      ["Shade:", "how much signal that residue collected over the whole walk. Hover a dot for its name and value."],
+      ["Rings:", `solid rings mark where the walk starts${r.allosteric ? "; dashed rings mark the known allosteric residues. Dashed rings in strong shades, far from the start, are what a good prediction looks like" : ""}.`],
+    ]));
 }
 
 function shade(t) {                     // theme ramp: little signal -> lots of signal
@@ -521,7 +594,12 @@ function rankingCard(r) {
       el("thead", {}, el("tr", {}, el("th", { text: "#" }), el("th", { text: "Residue" }), el("th", { text: "Name" }),
         el("th", { class: "num", text: "Signal" }), el("th", { class: "num", text: "Contacts" }), labelled ? el("th", { text: "Known" }) : null)),
       el("tbody", {}, rows))),
-    el("div", { class: "btn-row" }, download(r.files.ranking_csv, `Full ranking, ${r.ranking_total} residues`, "CSV")));
+    el("div", { class: "btn-row" }, download(r.files.ranking_csv, `Full ranking, ${r.ranking_total} residues`, "CSV")),
+    guide([
+      ["Signal:", "the total time the walker spent on that residue at the noise level shown. The bar compares it with the top residue."],
+      ["Contacts:", "how many neighbours the residue has. Well-connected residues tend to collect more signal."],
+      ["Read with care:", "the top of this list is mostly residues right next to the start, because signal fades with distance. It is a list of where the signal goes, not a finished prediction."],
+    ]));
 }
 
 /* ---------- downloads + reproducibility ---------- */

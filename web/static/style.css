@@ -536,3 +536,20 @@ body { transition: background-color 200ms ease, color 200ms ease; }
   .page { max-width: 860px; }
 }
 @media (max-width: 640px) { .page { padding: 32px 16px 48px; } }
+
+/* ---------- plain-language help: run takeaways + "how to read this" ---------- */
+.takeaways { margin-top: 20px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--sunken); }
+.tk-title { font: 600 12px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.takeaways ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.takeaways li { display: grid; grid-template-columns: 58px 1fr; gap: 12px; align-items: start; }
+.tk-mark { display: inline-block; text-align: center; padding: 2px 0; border-radius: 999px; font: 600 11.5px var(--mono);
+  border: 1.5px solid var(--ink); }
+.tk-mark.yes { background: var(--ink); color: var(--on-ink); }
+.tk-mark.partly { background: transparent; color: var(--ink); border-style: dashed; }
+.tk-mark.no { background: transparent; color: var(--muted); border-color: var(--line-2); }
+.tk-q { font-weight: 600; font-size: 14px; }
+.tk-a { color: var(--ink-2); font-size: 13.5px; margin-top: 2px; }
+.takeaways li.tk-hint { display: block; color: var(--muted); font-size: 13px; }
+.guide-list { margin: 4px 0 8px; padding-left: 18px; font-size: 13.5px; color: var(--ink-2); display: grid; gap: 6px; }
+.guide-list strong { color: var(--ink); font-weight: 600; }
+.stat[title]:not([title=""]) { cursor: help; }
