@@ -1,11 +1,10 @@
 "use strict";
-/* Pixel art for QubitMan: the wordmark, the mascot, the icons, the background
-   network and the loading walker. Everything is greyscale and drawn from small
-   bitmaps below ('#' dark pixel, '+' mid grey, '.' empty). */
+/* Pixel art for QubitMan: the wordmark, the icons, the background network and the
+   loading walker. Everything is greyscale and drawn from small bitmaps below
+   ('#' ink pixel, '+' mid grey, '.' empty); colours come from the CSS theme. */
 
 const PX = (() => {
   const NS = "http://www.w3.org/2000/svg";
-  const INK = "#161616", MID = "#9a9a9a";
   const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   /* ---------- bitmap font (7 rows) ---------- */
@@ -29,6 +28,8 @@ const PX = (() => {
     net:   ["##....##", "##+..+##", "..+..+..", "...##...", "...##...", "..+..+..", "##+..+##", "##....##"],
     wave:  ["........", ".##.....", "#..#....", "....#..#", ".....##.", "........", "+.+.+.+.", "........"],
     qubit: ["..####..", ".#....#.", "#...#..#", "#..###.#", "#.#.#.##", "#...#..#", ".#....#.", "..####.."],
+    moon:  ["..####..", ".###....", "###.....", "###.....", "###.....", "###.....", ".###....", "..####.."],
+    sun:   ["...#....", ".#.#.#..", "..###...", "#######.", "..###...", ".#.#.#..", "...#....", "........"],
   };
 
   function svgEl(tag, attrs, parent) {
@@ -47,7 +48,7 @@ const PX = (() => {
     rows.forEach((row, y) => [...row].forEach((ch, x) => {
       if (ch === "." || ch === " ") return;
       const r = svgEl("rect", { x: x * px + gap / 2, y: y * px + gap / 2, width: px - gap, height: px - gap,
-        fill: ch === "+" ? MID : INK }, svg);
+        class: ch === "+" ? "px mid" : "px" }, svg);
       if (animate && !reduced) {
         r.style.animationDelay = `${(x + y) * delayStep}ms`;
         r.classList.add("px-in");
@@ -74,56 +75,10 @@ const PX = (() => {
       for (const c of cells) {
         const d = Math.hypot(c.x + 0.5 - mx, c.y + 0.5 - my);
         c.el.style.transform = d < 3.2 ? `translateY(${-(3.2 - d) * 1.2}px)` : "";
-        c.el.style.fill = d < 1.6 ? "#5a5a5a" : "";
+        c.el.style.fill = d < 1.6 ? "var(--muted)" : "";
       }
     });
     svg.addEventListener("pointerleave", () => cells.forEach((c) => { c.el.style.transform = ""; c.el.style.fill = ""; }));
-  }
-
-  /* ---------- mascot: a little person whose head is a qubit with a spin arrow ---------- */
-  const BODY = [
-    "...#####...",
-    "..#.....#..",
-    ".#.......#.",
-    "#.........#",
-    "#.........#",
-    "#.........#",
-    "#.........#",
-    ".#.......#.",
-    "..#.....#..",
-    "...#####...",
-    ".....#.....",
-    "..#######..",
-    ".#..###..#.",
-    "#...###...#",
-    "....###....",
-    "....#.#....",
-    "...##.##...",
-  ];
-  const ARROW = ["..#..", ".###.", "#.#.#", "..#..", "..#.."];
-  const rot = (m) => m[0].split("").map((_, i) => m.map((r) => r[i]).reverse().join(""));
-  const ARROWS = [ARROW, rot(ARROW), rot(rot(ARROW)), rot(rot(rot(ARROW)))];
-
-  function mascotFrame(k) {
-    const rows = BODY.map((r) => r.split(""));
-    ARROWS[k % 4].forEach((line, y) => [...line].forEach((ch, x) => { if (ch === "#") rows[y + 2][x + 3] = "+"; }));
-    rows[4][5] = "#";                                           // the spin's pivot
-    return rows.map((r) => r.join(""));
-  }
-
-  function mascot(svg, { px = 5, speed = 1600 } = {}) {
-    let k = 0, timer = null;
-    const draw = () => drawBitmap(svg, mascotFrame(k), px);
-    draw();
-    const api = {
-      spin(ms) {
-        clearInterval(timer);
-        if (reduced) return;
-        timer = setInterval(() => { k = (k + 1) % 4; draw(); }, ms);
-      },
-    };
-    api.spin(speed);
-    return api;
   }
 
   function icons(root = document) {
@@ -152,6 +107,7 @@ const PX = (() => {
     }
     function frame(t) {
       if (!running) return;
+      const ink = getComputedStyle(document.documentElement).getPropertyValue("--ink-rgb").trim() || "22, 22, 22";
       const dt = Math.min(50, t - (last || t)); last = t;
       ctx.clearRect(0, 0, innerWidth, innerHeight);
       for (const p of nodes) {
@@ -163,7 +119,7 @@ const PX = (() => {
       for (let i = 0; i < nodes.length; i++) for (let j = i + 1; j < nodes.length; j++) {
         const a = nodes[i], b = nodes[j], d = Math.hypot(a.x - b.x, a.y - b.y);
         if (d < 150) {
-          ctx.strokeStyle = `rgba(22,22,22,${0.07 * (1 - d / 150)})`;
+          ctx.strokeStyle = `rgba(${ink},${0.07 * (1 - d / 150)})`;
           ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
         }
       }
@@ -174,13 +130,13 @@ const PX = (() => {
         hopAt = t + 700;
       }
       trail = trail.filter((s) => t - s.t < 5000);
-      for (const p of nodes) { ctx.fillStyle = "rgba(22,22,22,0.10)"; ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3); }
+      for (const p of nodes) { ctx.fillStyle = `rgba(${ink},0.10)`; ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3); }
       for (const s of trail) {
         const p = nodes[s.i], a = 0.22 * (1 - (t - s.t) / 5000);
-        ctx.fillStyle = `rgba(22,22,22,${a})`; ctx.fillRect(p.x - 2.5, p.y - 2.5, 5, 5);
+        ctx.fillStyle = `rgba(${ink},${a})`; ctx.fillRect(p.x - 2.5, p.y - 2.5, 5, 5);
       }
       const w = nodes[walker];
-      if (w) { ctx.fillStyle = "rgba(22,22,22,0.35)"; ctx.fillRect(w.x - 3.5, w.y - 3.5, 7, 7); }
+      if (w) { ctx.fillStyle = `rgba(${ink},0.35)`; ctx.fillRect(w.x - 3.5, w.y - 3.5, 7, 7); }
       if (!reduced) requestAnimationFrame(frame);
     }
     build();
@@ -210,5 +166,5 @@ const PX = (() => {
     };
   }
 
-  return { wordmark, mascot, icons, background, walkerBar, drawBitmap, reduced };
+  return { wordmark, icons, background, walkerBar, drawBitmap, reduced, ICONS };
 })();

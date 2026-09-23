@@ -28,6 +28,15 @@ function svg(tag, attrs = {}, parent) {
 const fmt = (v, d = 3) => (v === null || v === undefined || Number.isNaN(v) ? "n/a" : Number(v).toFixed(d));
 const fmtInt = (v) => Number(v).toLocaleString("en-US");
 const fmtGamma = (g) => String(+Number(g).toPrecision(3));
+/* theme colours, read from the CSS tokens so charts follow light and dark mode */
+const C = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+function rgbOf(c) {
+  if (c.startsWith("#")) {
+    const h = c.length === 4 ? c.slice(1).split("").map((x) => x + x).join("") : c.slice(1, 7);
+    return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  }
+  return (c.match(/[\d.]+/g) || [0, 0, 0]).slice(0, 3).map(Number);
+}
 const pct = (v) => (v === null || v === undefined ? "n/a" : `${(100 * v).toFixed(1)}%`);
 
 /* ---------- tooltip ---------- */
@@ -306,47 +315,47 @@ function drawChart(c) {
 
   for (let v = axis.min; v <= axis.max + axis.step / 2; v += axis.step) {
     const y = Y(v);
-    svg("line", { x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: Math.abs(v - axis.min) < 1e-12 ? "#d4d4d4" : "#f0f0f0", "stroke-width": 1, "shape-rendering": "crispEdges" }, root);
-    svg("text", { x: m.l - 10, y: y + 3.5, "text-anchor": "end", "font-size": 11, fill: "#6b6b6b", text: v.toFixed(axis.decimals) }, root);
+    svg("line", { x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: Math.abs(v - axis.min) < 1e-12 ? C("--line-2") : C("--grid"), "stroke-width": 1, "shape-rendering": "crispEdges" }, root);
+    svg("text", { x: m.l - 10, y: y + 3.5, "text-anchor": "end", "font-size": 11, fill: C("--muted"), text: v.toFixed(axis.decimals) }, root);
   }
   for (const t of [0, 0.1, 1, 10, 100].filter((t) => t <= gmax * 1.01)) {
-    svg("line", { x1: X(t), x2: X(t), y1: m.t + ih, y2: m.t + ih + 4, stroke: "#c4c4c4", "shape-rendering": "crispEdges" }, root);
-    svg("text", { x: X(t), y: m.t + ih + 18, "text-anchor": "middle", "font-size": 11, fill: "#6b6b6b", text: fmtGamma(t) }, root);
+    svg("line", { x1: X(t), x2: X(t), y1: m.t + ih, y2: m.t + ih + 4, stroke: C("--line-2"), "shape-rendering": "crispEdges" }, root);
+    svg("text", { x: X(t), y: m.t + ih + 18, "text-anchor": "middle", "font-size": 11, fill: C("--muted"), text: fmtGamma(t) }, root);
   }
-  svg("text", { x: m.l + iw / 2, y: H - 6, "text-anchor": "middle", "font-size": 11.5, fill: "#3a3a3a", text: "dephasing rate γ  (log scale)" }, root);
-  svg("text", { x: 12, y: m.t + ih / 2, "text-anchor": "middle", "font-size": 11.5, fill: "#3a3a3a",
+  svg("text", { x: m.l + iw / 2, y: H - 6, "text-anchor": "middle", "font-size": 11.5, fill: C("--ink-2"), text: "dephasing rate γ  (log scale)" }, root);
+  svg("text", { x: 12, y: m.t + ih / 2, "text-anchor": "middle", "font-size": 11.5, fill: C("--ink-2"),
     transform: `rotate(-90 12 ${m.t + ih / 2})`, text: c.yLabel }, root);
-  if (c.chance !== null) svg("line", { x1: m.l, x2: W - m.r, y1: Y(c.chance), y2: Y(c.chance), stroke: "#cfcfcf", "stroke-width": 1 }, root);
+  if (c.chance !== null) svg("line", { x1: m.l, x2: W - m.r, y1: Y(c.chance), y2: Y(c.chance), stroke: C("--line-2"), "stroke-width": 1 }, root);
   for (const b of c.baselines) {
-    svg("line", { x1: m.l, x2: W - m.r, y1: Y(b.value), y2: Y(b.value), stroke: "#8a8a8a", "stroke-width": 1, "stroke-dasharray": "1.5 3" }, root);
-    svg("text", { x: W - m.r + 6, y: Y(b.value) + 3.5, "font-size": 10.5, fill: "#6b6b6b", text: `${{ "proximity to active site": "proximity", "contact degree": "degree" }[b.label] || b.label} ${fmt(b.value)}` }, root);
+    svg("line", { x1: m.l, x2: W - m.r, y1: Y(b.value), y2: Y(b.value), stroke: C("--ctrl"), "stroke-width": 1, "stroke-dasharray": "1.5 3" }, root);
+    svg("text", { x: W - m.r + 6, y: Y(b.value) + 3.5, "font-size": 10.5, fill: C("--muted"), text: `${{ "proximity to active site": "proximity", "contact degree": "degree" }[b.label] || b.label} ${fmt(b.value)}` }, root);
   }
   const pg = c.peakGamma;
-  svg("line", { x1: X(pg), x2: X(pg), y1: m.t - 6, y2: m.t + ih, stroke: "#a3a3a3", "stroke-width": 1, "stroke-dasharray": "3 3" }, root);
+  svg("line", { x1: X(pg), x2: X(pg), y1: m.t - 6, y2: m.t + ih, stroke: C("--faint"), "stroke-width": 1, "stroke-dasharray": "3 3" }, root);
   svg("text", { x: X(pg) + (X(pg) > W - m.r - 110 ? -6 : 6), y: m.t - 10, "text-anchor": X(pg) > W - m.r - 110 ? "end" : "start",
-    "font-size": 11, fill: "#6b6b6b", text: `best γ = ${fmtGamma(pg)}` }, root);
+    "font-size": 11, fill: C("--muted"), text: `best γ = ${fmtGamma(pg)}` }, root);
 
   const main = c.series[0];
   const pts = (vals) => gammas.map((g, i) => [X(g), Y(vals[i])]);
   if (!c.auc) {
     const mp = pts(main.values);
     svg("path", { d: `M${mp[0][0]},${Y(axis.min)} ` + mp.map((p) => `L${p[0]},${p[1]}`).join(" ") + ` L${mp[mp.length - 1][0]},${Y(axis.min)} Z`,
-      fill: "#161616", "fill-opacity": 0.05 }, root);
+      fill: C("--ink"), "fill-opacity": 0.05 }, root);
   }
   const dots = [];
   [...c.series].reverse().forEach((s) => {
     const isMain = s === main;
     if (s.sd) {
       const up = gammas.map((g, i) => [X(g), Y(s.values[i] + s.sd[i])]), dn = gammas.map((g, i) => [X(g), Y(s.values[i] - s.sd[i])]).reverse();
-      svg("path", { d: "M" + up.concat(dn).map((q) => q.join(",")).join(" L") + " Z", fill: "#8a8a8a", "fill-opacity": 0.16 }, root);
+      svg("path", { d: "M" + up.concat(dn).map((q) => q.join(",")).join(" L") + " Z", fill: C("--ctrl"), "fill-opacity": 0.16 }, root);
     }
     const p = pts(s.values);
-    svg("path", { d: "M" + p.map((q) => q.join(",")).join(" L"), fill: "none", stroke: isMain ? "#161616" : "#8a8a8a",
+    svg("path", { d: "M" + p.map((q) => q.join(",")).join(" L"), fill: "none", stroke: isMain ? C("--ink") : C("--ctrl"),
       "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": isMain ? "none" : "5 4" }, root);
-    if (isMain) dots.push(p.map((q) => svg("circle", { cx: q[0], cy: q[1], r: 3.2, fill: "#161616", stroke: "#fff", "stroke-width": 1.5 }, root)));
+    if (isMain) dots.push(p.map((q) => svg("circle", { cx: q[0], cy: q[1], r: 3.2, fill: C("--ink"), stroke: C("--card"), "stroke-width": 1.5 }, root)));
   });
 
-  const cross = svg("line", { y1: m.t, y2: m.t + ih, stroke: "#161616", "stroke-opacity": 0.25, "stroke-width": 1, visibility: "hidden" }, root);
+  const cross = svg("line", { y1: m.t, y2: m.t + ih, stroke: C("--ink"), "stroke-opacity": 0.25, "stroke-width": 1, visibility: "hidden" }, root);
   const overlay = svg("rect", { x: m.l, y: m.t - 8, width: iw, height: ih + 8, fill: "transparent", class: "chart-overlay", tabindex: 0,
     "aria-label": "Use left and right arrows to read values" }, root);
   let active = -1;
@@ -384,8 +393,8 @@ function mapCard(r) {
   const lo = Math.min(...others), hi = Math.max(...others);
   const ringKey = (kind) => {
     const s = svg("svg", { width: 18, height: 18, viewBox: "0 0 18 18" });
-    svg("circle", { cx: 9, cy: 9, r: 4, fill: "#8a8a8a" }, s);
-    svg("circle", { cx: 9, cy: 9, r: 7.5, fill: "none", stroke: kind === "source" ? "#161616" : "#6b6b6b", "stroke-width": 1.5,
+    svg("circle", { cx: 9, cy: 9, r: 4, fill: C("--ctrl") }, s);
+    svg("circle", { cx: 9, cy: 9, r: 7.5, fill: "none", stroke: kind === "source" ? C("--ink") : C("--muted"), "stroke-width": 1.5,
       "stroke-dasharray": kind === "source" ? "none" : "2.5 2" }, s);
     return s;
   };
@@ -396,7 +405,7 @@ function mapCard(r) {
         el("h3", { class: "card-title", text: "Residue signal map" }),
         el("p", { class: "card-sub" }, `Signal each residue receives from the ${fromActive ? "active site" : "source"} at `,
           el("span", { class: "mono", text: `γ = ${fmtGamma(mp.gamma)}` }),
-          `${r.allosteric ? " (the best-AUC rate)" : " (the transport peak)"}. Darker means more signal. Residues sit at their 3D positions projected onto the protein's two main axes; lines are contacts.`))),
+          `${r.allosteric ? " (the best-AUC rate)" : " (the transport peak)"}. Stronger shades mean more signal. Residues sit at their 3D positions projected onto the protein's two main axes; lines are contacts.`))),
     el("div", { class: "map-legend" },
       el("span", { class: "ramp" }, el("span", { class: "mono", text: fmt(lo) }), el("span", { class: "ramp-bar" }), el("span", { class: "mono", text: fmt(hi) })),
       el("span", { class: "ring-key" }, ringKey("source"), el("span", { text: fromActive ? "active site" : `start ${r.summary.walk_from}` })),
@@ -404,9 +413,9 @@ function mapCard(r) {
     el("div", { class: "map-wrap", id: "map" }));
 }
 
-function shade(t) {                     // light grey -> near-black
-  const v = Math.round(236 + (22 - 236) * Math.min(1, Math.max(0, t)));
-  return `rgb(${v},${v},${v})`;
+function shade(t) {                     // theme ramp: little signal -> lots of signal
+  const lo = rgbOf(C("--ramp-lo")), hi = rgbOf(C("--ramp-hi")), k = Math.min(1, Math.max(0, t));
+  return `rgb(${lo.map((v, i) => Math.round(v + (hi[i] - v) * k)).join(",")})`;
 }
 
 function drawMap() {
@@ -425,7 +434,7 @@ function drawMap() {
   const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img",
     "aria-label": `Contact network of ${N} residues shaded by signal received` }, host);
   const eg = svg("g", {}, root);
-  const edgeEls = mp.edges.map(([a, b]) => svg("line", { x1: P[a][0], y1: P[a][1], x2: P[b][0], y2: P[b][1], stroke: "#e6e6e6", "stroke-width": 1 }, eg));
+  const edgeEls = mp.edges.map(([a, b]) => svg("line", { x1: P[a][0], y1: P[a][1], x2: P[b][0], y2: P[b][1], stroke: C("--edge"), "stroke-width": 1 }, eg));
   const edgesOf = mp.nodes.map(() => []);
   mp.edges.forEach(([a, b], k) => { edgesOf[a].push(k); edgesOf[b].push(k); });
 
@@ -435,10 +444,10 @@ function drawMap() {
   for (const i of order) {
     const n = mp.nodes[i];
     const t = n.role === "source" ? 1 : (n.score - lo) / (hi - lo || 1);
-    nodeEls[i] = svg("circle", { cx: P[i][0], cy: P[i][1], r: rad, fill: shade(t), stroke: "#fff", "stroke-width": 1.5 }, ng);
+    nodeEls[i] = svg("circle", { cx: P[i][0], cy: P[i][1], r: rad, fill: shade(t), stroke: C("--card"), "stroke-width": 1.5 }, ng);
   }
   const rg = svg("g", {}, root);
-  const ring = (i, dashed) => svg("circle", { cx: P[i][0], cy: P[i][1], r: rad + 4, fill: "none", stroke: dashed ? "#6b6b6b" : "#161616",
+  const ring = (i, dashed) => svg("circle", { cx: P[i][0], cy: P[i][1], r: rad + 4, fill: "none", stroke: dashed ? C("--muted") : C("--ink"),
     "stroke-width": 1.4, "stroke-dasharray": dashed ? "3 2.5" : "none" }, rg);
   mp.nodes.forEach((n, i) => { if (n.role === "source") ring(i, false); else if (n.role === "allosteric") ring(i, true); });
 
@@ -446,13 +455,13 @@ function drawMap() {
   let active = -1;
   function setActive(i, e) {
     if (active >= 0) {
-      nodeEls[active].setAttribute("r", rad); nodeEls[active].setAttribute("stroke", "#fff");
-      edgesOf[active].forEach((k) => edgeEls[k].setAttribute("stroke", "#e6e6e6"));
+      nodeEls[active].setAttribute("r", rad); nodeEls[active].setAttribute("stroke", C("--card"));
+      edgesOf[active].forEach((k) => edgeEls[k].setAttribute("stroke", C("--edge")));
     }
     active = i;
     if (i < 0) { hideTip(); return; }
-    nodeEls[i].setAttribute("r", rad + 1.5); nodeEls[i].setAttribute("stroke", "#161616");
-    edgesOf[i].forEach((k) => edgeEls[k].setAttribute("stroke", "#9a9a9a"));
+    nodeEls[i].setAttribute("r", rad + 1.5); nodeEls[i].setAttribute("stroke", C("--ink"));
+    edgesOf[i].forEach((k) => edgeEls[k].setAttribute("stroke", C("--muted")));
     const n = mp.nodes[i];
     const role = n.role === "source" ? (mp.from === "active site" ? "  ·  active site" : "  ·  source")
       : n.role === "allosteric" ? "  ·  known allosteric" : "";
@@ -529,9 +538,31 @@ window.addEventListener("resize", () => { clearTimeout(rs); rs = setTimeout(() =
    QubitMan extras: pixel art, the dice, the id preview, the loading fun
    ====================================================================== */
 PX.wordmark($("#wordmark"));
-PX.mascot($("#mascot"), { px: 5, speed: 1600 });
-const loadingMascot = PX.mascot($("#loading-mascot"), { px: 3, speed: 1600 });
+$("#logo").innerHTML = LOGO.svg(104);           // trusted, built from constants in logo.js
+$("#loading-logo").innerHTML = LOGO.svg(40);
 PX.icons();
+
+/* ---------- light / dark ---------- */
+function isDark() {
+  const t = document.documentElement.dataset.theme;
+  return t ? t === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+function paintToggle() {
+  const dark = isDark();
+  PX.drawBitmap($("#theme-icon"), dark ? PX.ICONS.sun : PX.ICONS.moon, 3);
+  $("#theme-label").textContent = dark ? "light" : "dark";
+}
+$("#theme-toggle").addEventListener("click", () => {
+  const next = isDark() ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("qm-theme", next); } catch (e) { /* private mode: fine, just not remembered */ }
+  paintToggle();
+  if (current) { hideTip(); redraw(); }
+});
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if (!document.documentElement.dataset.theme) { paintToggle(); if (current) redraw(); }
+});
+paintToggle();
 PX.background($("#bg"));
 const walkerBar = PX.walkerBar($("#walker"));
 
@@ -553,10 +584,10 @@ function showFact() {
   setTimeout(() => { f.textContent = FACTS[factIdx % FACTS.length]; factIdx += 1; f.style.opacity = "1"; }, 250);
 }
 function startLoadingFun() {
-  walkerBar.start(); loadingMascot.spin(260);
+  walkerBar.start();
   showFact(); clearInterval(factTimer); factTimer = setInterval(showFact, 6000);
 }
-function stopLoadingFun() { walkerBar.stop(); loadingMascot.spin(1600); clearInterval(factTimer); }
+function stopLoadingFun() { walkerBar.stop(); clearInterval(factTimer); }
 
 /* ---------- protein info panel ---------- */
 function infoPanel(info, { compact = false, onRoll = null } = {}) {

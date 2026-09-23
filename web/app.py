@@ -7,7 +7,7 @@ A thin wrapper: every number comes from run_protein.analyze(), the same function
 the command line uses, so the page and `python run_protein.py` agree exactly.
 Each run writes its files under web/runs/<id>/ and is served from there.
 """
-import json, os, re, shutil, sys, traceback, uuid
+import json, os, re, shutil, sys, threading, time, traceback, uuid
 
 import numpy as np
 from flask import Flask, abort, jsonify, request, send_from_directory
@@ -19,6 +19,10 @@ import run_protein as rp          # noqa: E402
 
 RUNS = os.path.join(HERE, "runs")
 KEEP_RUNS = 30
+# one walk at a time: each walk already uses every CPU core, and two at once
+# would compete for cores and memory (easy to trigger with a second tab)
+RUN_LOCK = threading.Lock()
+RUN_STARTED = {"t": None}
 
 app = Flask(__name__, static_folder=os.path.join(HERE, "static"), static_url_path="/static")
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024
@@ -79,6 +83,19 @@ def to_json(result, run_id):
 
 @app.post("/api/run")
 def api_run():
+    if not RUN_LOCK.acquire(blocking=False):
+        busy = int(time.time() - RUN_STARTED["t"]) if RUN_STARTED["t"] else 0
+        return jsonify({"error": f"A walk is already running (started {busy} s ago). "
+                                 "Wait for it to finish, then try again."}), 409
+    RUN_STARTED["t"] = time.time()
+    try:
+        return _run()
+    finally:
+        RUN_STARTED["t"] = None
+        RUN_LOCK.release()
+
+
+def _run():
     run_id = uuid.uuid4().hex[:12]
     run_dir = os.path.join(RUNS, run_id)
     try:
@@ -220,6 +237,8 @@ def pdb_info(pdb_id):
     info["run_residues"] = n
     # measured: 169 residues ~26 s on 4 cores; cost grows ~ with the square of the size
     info["estimate_s"] = int(round(max(5, 26 * (n / 169) ** 2))) if n else None
+    if len(_INFO_CACHE) >= 500:                        # keep the cache small
+        _INFO_CACHE.pop(next(iter(_INFO_CACHE)))
     _INFO_CACHE[pdb_id] = info
     return info
 

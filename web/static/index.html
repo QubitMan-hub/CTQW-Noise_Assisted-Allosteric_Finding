@@ -4,15 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>QubitMan</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%23161616' d='M2 0h4v1H2zM1 1h1v1H1zM6 1h1v1H6zM0 2h1v3H0zM7 2h1v3H7zM1 5h1v1H1zM6 5h1v1H6zM2 6h4v1H2zM3 2h2v1H3zM2 3h1v1H2zM5 3h1v1H5zM3.5 3h1v3h-1z'/%3E%3C/svg%3E">
+  <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+  <script>
+    try { const t = localStorage.getItem("qm-theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <canvas id="bg" aria-hidden="true"></canvas>
   <main class="page">
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch between light and dark mode">
+      <svg class="px-icon" id="theme-icon" aria-hidden="true"></svg><span id="theme-label">dark</span>
+    </button>
     <header class="hero">
       <div class="brand">
-        <svg id="mascot" class="mascot" aria-hidden="true"></svg>
+        <div id="logo" class="logo"></div>
         <div>
           <h1 class="wordmark-wrap"><svg id="wordmark" class="wordmark" role="img" aria-label="QubitMan"></svg></h1>
           <p class="tagline">Drop in any protein and watch a noisy quantum walker hop from residue to residue. Find out where the signal goes, and whether a little noise helps it get there.</p>
@@ -142,7 +148,7 @@
 
     <section id="loading" class="card loading" hidden aria-live="polite">
       <div class="loading-head">
-        <svg id="loading-mascot" class="mascot small" aria-hidden="true"></svg>
+        <div id="loading-logo" class="logo small" aria-hidden="true"></div>
         <div>
           <div class="loading-title">Walking the protein</div>
           <div class="loading-sub">building the network, then 18 noise levels on all CPU cores</div>
@@ -161,6 +167,7 @@
     </footer>
   </main>
   <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+  <script src="/static/logo.js"></script>
   <script src="/static/pixels.js"></script>
   <script src="/static/app.js"></script>
 </body>

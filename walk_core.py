@@ -102,9 +102,9 @@ def run_walk(H, source_idx, gamma, tlist, rtol=1e-6, atol=1e-9):
     sources = [int(s) for s in np.atleast_1d(source_idx)]
     tlist = np.asarray(tlist, dtype=float)
     if gamma == 0:
-        return _unitary_populations(H, sources, tlist)
+        return _unitary_populations(H.toarray() if sparse.issparse(H) else H, sources, tlist)
     n = H.shape[0]
-    Hs = sparse.csr_matrix(np.asarray(H, dtype=complex))
+    Hs = sparse.csr_matrix(H, dtype=complex) if sparse.issparse(H) else sparse.csr_matrix(np.asarray(H, dtype=complex))
     diag = np.arange(n)
 
     def rhs(_t, y):
@@ -161,6 +161,45 @@ def default_workers():
     return max(1, min(8, os.cpu_count() or 1))
 
 
+def available_memory():
+    """Bytes of memory free for new work, or None if the platform will not say."""
+    try:
+        with open("/proc/meminfo") as f:                      # Linux
+            for line in f:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) * 1024
+    except OSError:
+        pass
+    if sys.platform == "win32":
+        import ctypes
+
+        class _Mem(ctypes.Structure):
+            _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong)] + [
+                (k, ctypes.c_ulonglong) for k in ("total", "avail", "total_pf", "avail_pf",
+                                                  "total_virt", "avail_virt", "avail_ext")]
+        m = _Mem()
+        m.dwLength = ctypes.sizeof(_Mem)
+        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(m)):
+            return int(m.avail)
+    return None
+
+
+def walk_memory(n):
+    """Peak memory of one noisy walk on n residues: the RK45 state and temporaries hold
+    about 20 n x n complex arrays (measured: ~98 MB at n=566, ~330 MB at n=1058),
+    plus a Python/numpy baseline."""
+    return 20 * 16 * n * n + 150 * 2 ** 20
+
+
+def safe_workers(n, requested=None):
+    """CPU cores to use, lowered so that the workers fit in the free memory."""
+    w = default_workers() if requested is None else max(1, int(requested))
+    avail = available_memory()
+    if avail:
+        w = min(w, max(1, int(0.7 * avail // walk_memory(n))))
+    return w
+
+
 def sweep_many(hams, jobs, tlist, workers=None):
     """Run many independent walks and return their visiting-score vectors in order.
     hams: {key: H}; jobs: [(key, source index or indices, gamma), ...].
@@ -174,7 +213,8 @@ def sweep_many(hams, jobs, tlist, workers=None):
             out[i] = visiting_scores(run_walk(hams[key], src, 0.0, tlist), tlist)
         else:
             slow.append(i)
-    workers = default_workers() if workers is None else max(1, int(workers))
+    n = next(iter(hams.values())).shape[0] if hams else 0
+    workers = safe_workers(n, workers)
     if workers == 1 or len(slow) <= 1:
         for i in slow:
             key, src, g = jobs[i]
@@ -185,8 +225,10 @@ def sweep_many(hams, jobs, tlist, workers=None):
     os.environ.update({v: "1" for v in _THREAD_VARS})
     try:
         ctx = multiprocessing.get_context("spawn")
+        # workers get sparse copies of H: a few contacts per residue instead of n x n
+        light = {k: sparse.csr_matrix(np.asarray(H, dtype=complex)) for k, H in hams.items()}
         with ProcessPoolExecutor(max_workers=min(workers, len(slow)), mp_context=ctx,
-                                 initializer=_pool_init, initargs=(hams, tlist)) as ex:
+                                 initializer=_pool_init, initargs=(light, tlist)) as ex:
             futures = {ex.submit(_pool_job, jobs[i]): i for i in slow}
             for f in as_completed(futures):
                 out[futures[f]] = f.result()
