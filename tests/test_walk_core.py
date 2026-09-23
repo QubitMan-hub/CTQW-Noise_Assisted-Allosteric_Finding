@@ -84,6 +84,20 @@ def test_hump_stats():
     assert wc.hump_stats([0, 1, 10], [0.5, 0.4, 0.1])["verdict"] == "quantum"
 
 
+def test_distance_adjusted_score():
+    # shells: distances 1,1,1 | 2,2 merged with 3 (min_size 3) ; ineligible residue skipped
+    dist = np.array([0, 1, 1, 1, 2, 2, 3])
+    el = dist > 0
+    shells = wc.distance_shells(dist, el, min_size=3)
+    assert [sorted(g.tolist()) for g in shells] == [[1, 2, 3], [4, 5, 6]]
+    # a score that only encodes distance carries nothing once adjusted: all ties
+    pct = wc.shell_percentile(-dist.astype(float), shells, len(dist))
+    assert np.isnan(pct[0]) and np.allclose(pct[1:4], 0.5)
+    # the best in each shell gets the top percentile, whatever its raw size
+    pct = wc.shell_percentile(np.array([9, 0.9, 0.8, 0.7, 0.03, 0.01, 0.02]), shells, len(dist))
+    assert pct[1] == pct[4] and pct[1] > pct[2] > pct[3]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

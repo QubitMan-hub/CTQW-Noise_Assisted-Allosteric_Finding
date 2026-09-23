@@ -154,9 +154,9 @@ function renderResults(r) {
   charts.length = 0;
   const root = $("#results");
   const pair = (...cards) => el("div", { class: "pair" + (cards.length === 2 ? " two" : "") }, cards);
-  root.replaceChildren(summaryCard(r),
-    r.allosteric ? pair(allostericCard(r), transportCard(r)) : transportCard(r),
-    pair(mapCard(r), rankingCard(r)), filesCard(r));
+  root.replaceChildren(...[summaryCard(r),
+    r.allosteric ? pair(allostericCard(r), adjustedCard(r)) : null,
+    pair(transportCard(r), mapCard(r)), rankingCard(r), filesCard(r)].filter(Boolean));
   [...root.children].forEach((c, i) => { c.classList.add("reveal"); c.style.animationDelay = `${i * 40}ms`; });
   redraw();
   root.firstElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -184,7 +184,7 @@ function summaryCard(r) {
     el("div", { class: "stats" },
       stat("Residues", fmtInt(s.residues)), stat("Contacts", fmtInt(s.contacts)),
       a ? stat("Best AUC", fmt(a.stats.peak_value)) : stat("Transport peak γ", fmtGamma(t.peak_gamma)),
-      a ? stat("Best AUC at γ", fmtGamma(a.stats.peak_gamma)) : stat("Gain over ends", t.verdict === "hump" ? pct(t.gain_rel) : "none")),
+      a ? stat("Best AUC, same distance", fmt(a.adjusted.stats.peak_value)) : stat("Gain over ends", t.verdict === "hump" ? pct(t.gain_rel) : "none")),
     el("dl", { class: "facts" },
       el("dt", { text: "Labels" }), el("dd", { text: r.label_note }),
       el("dt", { text: "Transport" }),
@@ -212,7 +212,7 @@ function statsRow(st, unit) {
 }
 
 function controlNote(ctrl, st) {
-  if (!ctrl) return null;
+  if (!ctrl) return el("p", { class: "note", text: "Ran without the random-energy control. Humps like this show up in almost any network, so on its own it is not evidence about this protein." });
   const humps = ctrl.seed_verdicts ? `${ctrl.seed_verdicts.filter((v) => v === "hump").length} of ${ctrl.seed_verdicts.length} seeds show a hump; ` : "";
   return el("p", { class: "note" }, "Random-energy control: ",
     el("span", { class: "mono", text: verdictText(ctrl.stats, "mean curve").toLowerCase() }), `. ${humps}`,
@@ -222,31 +222,45 @@ function controlNote(ctrl, st) {
       ? " A hump that random energies reproduce is not specific to the hydropathy model." : "");
 }
 
-function allostericCard(r) {
-  const a = r.allosteric, st = a.stats;
-  const series = [{ values: a.auc, label: `${r.summary.site_energy} site energies`, style: "main" }];
-  if (a.control) series.push({ values: a.control.mean, sd: a.control.sd, label: "random energies (mean ± sd)", style: "control" });
-  const chart = { id: "chart-allo", gammas: r.gammas, series, yLabel: "ROC AUC, allosteric residues", peakGamma: st.peak_gamma,
-    baselines: Object.entries(a.baselines).map(([k, v]) => ({ value: v, label: k })), chance: 0.5, auc: true, digits: 3 };
+function aucCard(r, blk, o) {
+  const a = r.allosteric, st = blk.stats;
+  const series = [{ values: blk.auc, label: `${r.summary.site_energy} site energies`, style: "main" }];
+  if (blk.control) series.push({ values: blk.control.mean, sd: blk.control.sd, label: "random energies (mean ± sd)", style: "control" });
+  const chart = { id: o.id, gammas: r.gammas, series, yLabel: o.yLabel, peakGamma: st.peak_gamma,
+    baselines: Object.entries(blk.baselines).map(([k, v]) => ({ value: v, label: k })), chance: 0.5, auc: true, digits: 3 };
   charts.push(chart);
-  const miss = [...a.missing.active, ...a.missing.allosteric];
   return el("section", { class: "card" },
     el("div", { class: "card-head" },
       el("div", {},
-        el("h3", { class: "card-title", text: "Allosteric recovery versus noise" }),
-        el("p", { class: "card-sub", text: `Walk from the ${a.n_active} active-site residues; how well the signal each residue receives ranks the ${a.n_allosteric} known allosteric residues among ${a.n_candidates} candidates (ROC AUC; 0.5 is chance).` }))),
-    legend(series, a.baselines),
+        el("h3", { class: "card-title", text: o.title }),
+        el("p", { class: "card-sub", text: o.sub }))),
+    legend(series, blk.baselines),
     el("div", { class: "chart-wrap", id: chart.id }),
     statsRow(st, "auc"),
-    el("div", { class: "metric-row" }, Object.entries(a.baselines).map(([k, v]) => el("span", {}, `baseline: ${k}`, el("strong", { text: fmt(v) })))),
-    controlNote(a.control, st),
-    miss.length || a.name_mismatch.length ? el("p", { class: "note", text:
-      `${miss.length ? `Not in the network: ${miss.join(", ")}. ` : ""}${a.name_mismatch.length ? `Name mismatch: ${a.name_mismatch.join("; ")}.` : ""}` }) : null,
+    el("div", { class: "metric-row" }, Object.entries(blk.baselines).map(([k, v]) => el("span", {}, `baseline: ${k}`, el("strong", { text: fmt(v) })))),
+    o.extra || null,
+    controlNote(blk.control, st),
     el("div", { class: "btn-row" },
-      download(r.files.allosteric_png, "Download figure", "PNG 300 dpi", true),
-      download(r.files.allosteric_svg, "Figure", "SVG"),
-      download(r.files.allosteric_csv, "Data", "CSV")),
+      download(r.files[o.tag + "_png"], "Download figure", "PNG 300 dpi", true),
+      download(r.files[o.tag + "_svg"], "Figure", "SVG"),
+      download(r.files[o.tag + "_csv"], "Data", "CSV")),
     dataTable(r.gammas, series, 3));
+}
+
+function allostericCard(r) {
+  const a = r.allosteric, miss = [...a.missing.active, ...a.missing.allosteric];
+  return aucCard(r, a, { id: "chart-allo", tag: "allosteric", yLabel: "ROC AUC, allosteric residues",
+    title: "Allosteric recovery versus noise",
+    sub: `Walk from the ${a.n_active} active-site residues; how well the signal each residue receives ranks the ${a.n_allosteric} known allosteric residues among ${a.n_candidates} candidates (ROC AUC; 0.5 is chance).`,
+    extra: miss.length || a.name_mismatch.length ? el("p", { class: "note", text:
+      `${miss.length ? `Not in the network: ${miss.join(", ")}. ` : ""}${a.name_mismatch.length ? `Name mismatch: ${a.name_mismatch.join("; ")}.` : ""}` }) : null });
+}
+
+function adjustedCard(r) {
+  const d = r.allosteric.adjusted;
+  return aucCard(r, d, { id: "chart-adj", tag: "adjusted", yLabel: "ROC AUC, same distance",
+    title: "Beyond distance",
+    sub: `The same test, but each residue is only compared with residues equally far from the active site (${d.shells} distance shells). Plain closeness scores 0.5 here, so anything above it is what the walk adds.` });
 }
 
 function transportCard(r) {
@@ -643,13 +657,17 @@ function infoPanel(info, { compact = false, onRoll = null } = {}) {
     showPreview(info);
     form.requestSubmit();
   });
-  const est = info.estimate_s ? `roughly ${info.estimate_s < 90 ? info.estimate_s + " s" : Math.round(info.estimate_s / 60) + " min"} on 4 cores` : "";
+  // estimate_s is for the plain walk; the random-energy control adds 5 more sweeps
+  const secs = info.estimate_s && info.estimate_s * ($("#control").checked ? CONTROL_FACTOR : 1);
+  const est = secs ? `roughly ${secs < 90 ? Math.round(secs) + " s" : Math.round(secs / 60) + " min"} on 4 cores` : "";
   const chainNote = !info.known_site && multi && info.suggested_chains ? `chain ${info.suggested_chains} (${info.run_residues} residues)` : `${info.run_residues} residues`;
   card.append(el("div", { class: "info-actions" }, run,
     onRoll ? (() => { const b = el("button", { type: "button", class: "linkish", text: "roll again" }); b.addEventListener("click", onRoll); return b; })() : null,
     el("span", { class: "muted", style: "font-size:13px", text: [chainNote, est].filter(Boolean).join("  ·  ") })));
   return card;
 }
+
+const CONTROL_FACTOR = 6;
 
 /* ---------- the dice ---------- */
 async function roll(kind, button) {

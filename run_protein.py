@@ -22,8 +22,8 @@ or given with --active. Known allosteric residues (from ALLO or --allosteric)
 add the ROC AUC test; without them you still get the ranked candidate residues.
 With no active site at all, the walk starts at --source (default: the
 most-connected residue) and gives the transport curve and ranking.
---control adds the null model: the same sweep with random site energies over
-several seeds, drawn as a band. Sweeps run in parallel over the CPU cores.
+The null model runs by default: the same sweep with random site energies over
+several seeds, drawn as a band (--no-control skips it for a quick look). Sweeps run in parallel over the CPU cores.
 """
 import argparse, hashlib, json, os, subprocess, sys, time
 import numpy as np, networkx as nx
@@ -41,7 +41,7 @@ DEFAULTS = dict(
     source=None, chains=None, model=0, method="cb", cutoff=None, min_seq_sep=0, weighted=False,
     site_energy="hydropathy", scale=3.0, seed=0, gammas=list(wc.DEFAULT_GAMMAS),
     tmax=30.0, ntime=200, distal_fraction=0.5,
-    control=False, control_seeds=5,
+    control=True, control_seeds=5,
     labels="auto", active=None, allosteric=None, site=None,
     workers=None,
 )
@@ -294,22 +294,33 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         el, pos = allo["eligible"], allo["positive"]
         auc = np.array([wc.roc_auc(s[el], pos[el]) for s in S])
         a_stats = wc.hump_stats(gammas, auc)
-        dist_act = {}
-        for a in allo["rep"]["active"]:
-            for k, d in nx.single_source_shortest_path_length(G, nodes[a]).items():
-                dist_act[k] = min(d, dist_act.get(k, d))
-        prox = np.array([-dist_act.get(n, N) for n in nodes], dtype=float)
+        dist = wc.hop_distance(G, nodes, [nodes[a] for a in allo["rep"]["active"]])
+        prox = np.where(dist >= 0, -dist, -N).astype(float)
         deg = np.array([degree[n] for n in nodes], dtype=float)
+        # distance-adjusted: each residue compared only with residues equally far from the
+        # active site, so the test measures what the walk adds beyond plain proximity
+        shells = wc.distance_shells(dist, el & (dist >= 0))
+        adj_auc = lambda sc: wc.roc_auc(wc.shell_percentile(sc, shells, N)[el & (dist >= 0)], pos[el & (dist >= 0)])
+        auc_adj = np.array([adj_auc(s) for s in S])
+        adj_stats = wc.hump_stats(gammas, auc_adj)
         baselines = {"contact degree": wc.roc_auc(deg[el], pos[el]),
                      "proximity to active site": wc.roc_auc(prox[el], pos[el])}
-        a_ctrl = None
+        adj_baselines = {"contact degree, same distance": adj_auc(deg)}
+        a_ctrl = adj_ctrl = None
         if control_keys:
             curves = [np.array([wc.roc_auc(s[el], pos[el]) for s in block("walk", k)]) for k in control_keys]
             m, s = _band(curves)
             a_ctrl = {"mean": m.tolist(), "sd": s.tolist(), "stats": wc.hump_stats(gammas, m),
                       **_gain_rank(a_stats["gain_abs"], [wc.hump_stats(gammas, c)["gain_abs"] for c in curves])}
+            curves = [np.array([adj_auc(s) for s in block("walk", k)]) for k in control_keys]
+            m, s = _band(curves)
+            adj_ctrl = {"mean": m.tolist(), "sd": s.tolist(), "stats": wc.hump_stats(gammas, m),
+                        "best_seeds": [float(np.nanmax(c)) for c in curves],
+                        **_gain_rank(adj_stats["gain_abs"], [wc.hump_stats(gammas, c)["gain_abs"] for c in curves])}
         rep = allo["rep"]
         a_res = {"auc": auc.tolist(), "stats": a_stats, "baselines": baselines, "control": a_ctrl,
+                 "adjusted": {"auc": auc_adj.tolist(), "stats": adj_stats, "baselines": adj_baselines,
+                              "control": adj_ctrl, "shells": len(shells)},
                  "n_active": len(rep["active"]), "n_allosteric": int(pos.sum()),
                  "n_candidates": int(el.sum()),
                  "active": [nodes[i] for i in rep["active"]], "allosteric": [nodes[i] for i in np.where(pos)[0]],
@@ -341,19 +352,23 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
                 control_label=f"random site energies ({len(control_keys)} seeds, mean ± sd)",
                 peak_gamma=t_stats["peak_gamma"])
     if a_res:
-        files.update(allosteric_csv=prefix + "_allosteric.csv", allosteric_png=prefix + "_allosteric.png",
-                     allosteric_svg=prefix + "_allosteric.svg")
-        ac = a_res["control"]
-        with open(os.path.join(outdir, files["allosteric_csv"]), "w") as f:
-            f.write("gamma,auc" + (",control_mean,control_sd" if ac else "") + "\n")
-            for i, g in enumerate(gammas):
-                f.write(f"{g},{a_res['auc'][i]:.6f}" + (f",{ac['mean'][i]:.6f},{ac['sd'][i]:.6f}" if ac else "") + "\n")
-        save_figure(os.path.join(outdir, prefix + "_allosteric"), gammas, a_res["auc"],
-                    f"{o['site_energy']} site energies", "ROC AUC, known allosteric residues",
-                    control=(ac["mean"], ac["sd"]) if ac else None,
-                    control_label=f"random site energies ({len(control_keys)} seeds, mean ± sd)",
-                    baselines=[(v, k) for k, v in a_res["baselines"].items()], chance=0.5,
-                    peak_gamma=a_stats["peak_gamma"])
+        for tag, blk, ylabel, bl, chance in (
+                ("allosteric", a_res, "ROC AUC, known allosteric residues", a_res["baselines"], 0.5),
+                ("adjusted", a_res["adjusted"], "ROC AUC among residues equally far from the active site",
+                 a_res["adjusted"]["baselines"], 0.5)):
+            files.update({f"{tag}_csv": f"{prefix}_{tag}.csv", f"{tag}_png": f"{prefix}_{tag}.png",
+                          f"{tag}_svg": f"{prefix}_{tag}.svg"})
+            ac = blk["control"]
+            with open(os.path.join(outdir, files[f"{tag}_csv"]), "w") as f:
+                f.write("gamma,auc" + (",control_mean,control_sd" if ac else "") + "\n")
+                for i, g in enumerate(gammas):
+                    f.write(f"{g},{blk['auc'][i]:.6f}" + (f",{ac['mean'][i]:.6f},{ac['sd'][i]:.6f}" if ac else "") + "\n")
+            save_figure(os.path.join(outdir, f"{prefix}_{tag}"), gammas, blk["auc"],
+                        f"{o['site_energy']} site energies", ylabel,
+                        control=(ac["mean"], ac["sd"]) if ac else None,
+                        control_label=f"random site energies ({len(control_keys)} seeds, mean ± sd)",
+                        baselines=[(v, k) for k, v in bl.items()], chance=chance,
+                        peak_gamma=blk["stats"]["peak_gamma"])
     import csv
     with open(os.path.join(outdir, files["ranking_csv"]), "w", newline="") as f:
         w = csv.writer(f)
@@ -441,7 +456,9 @@ def main():
     ap.add_argument("--gammas", default=None, help="Comma-separated dephasing rates starting at 0 (default: 0 + 4 per decade from 0.01 to 100).")
     ap.add_argument("--tmax", type=float, default=30.0)
     ap.add_argument("--ntime", type=int, default=200)
-    ap.add_argument("--control", action="store_true", help="Also run random site energies (null model) over several seeds.")
+    ap.add_argument("--control", action=argparse.BooleanOptionalAction, default=True,
+                    help="Random site energies (null model) over several seeds; on by default, --no-control "
+                         "skips it (about 6 times faster, but a hump without it is not evidence).")
     ap.add_argument("--control-seeds", type=int, default=5)
     ap.add_argument("--labels", choices=["auto", "none"], default="auto", help="auto: ALLO table by PDB id; none: skip.")
     ap.add_argument("--active", default=None, help="Active-site residues, e.g. A:57,A:102 (the walk starts here).")
@@ -481,6 +498,12 @@ def main():
               f"{st['peak_value']:.3f} best at gamma={st['peak_gamma']:g}, {st['dephased_value']:.3f} dephased")
         print("  " + _verdict_line(st, "allosteric AUC"))
         print("  baselines: " + ", ".join(f"{k} {v:.3f}" for k, v in al["baselines"].items()))
+        ad = al["adjusted"]
+        print(f"  beyond distance (same-distance shells, proximity = 0.500): AUC {ad['stats']['quantum_value']:.3f} "
+              f"quantum, {ad['stats']['peak_value']:.3f} best at gamma={ad['stats']['peak_gamma']:g}; baseline "
+              + ", ".join(f"{k} {v:.3f}" for k, v in ad["baselines"].items())
+              + (f"; control best {max(ad['control']['best_seeds']):.3f} over {len(ad['control']['best_seeds'])} seeds"
+                 if ad["control"] else ""))
     for n in r["notes"]:
         print(f"  [note] {n}")
     print(f"\nDone in {r['elapsed_s']} s. Outputs in {a.outdir}/")

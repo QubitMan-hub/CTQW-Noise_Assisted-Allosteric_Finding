@@ -30,7 +30,8 @@ is why a score is only possible where those residues are known.
     python run_protein.py 1A8O.pdb                 # a file
     python run_protein.py 4OBE --chains A          # any PDB id
     python run_protein.py 4OBE --chains A --active A:12,A:13,A:61   # with an active site
-    python run_protein.py 1IWH --control           # an ALLO protein, plus the null model
+    python run_protein.py 1IWH                     # an ALLO protein (known sites looked up)
+    python run_protein.py 1IWH --no-control        # quick look, skips the null model
 
 Or in the browser: `python web/app.py`, then open http://127.0.0.1:8000.
 The site (QubitMan, with a light/dark toggle) can also roll a random protein, or one with a known allosteric
@@ -41,6 +42,7 @@ Outputs land in `output/`:
 
     NAME_hump.png/.svg/.csv        transport vs noise (300 dpi figure + data)
     NAME_allosteric.png/.svg/.csv  allosteric AUC vs noise, with baselines (if labels)
+    NAME_adjusted.png/.svg/.csv    the same AUC among residues equally far from the active site
     NAME_ranking.csv               every residue ranked by the signal it receives
     NAME.graphml                   the residue network
     NAME_parameters.json           every setting, the labels used, a code version
@@ -62,7 +64,13 @@ Outputs land in `output/`:
   and the ROC AUC measures how well that ranks the known allosteric residues
   among all non-active-site residues. Two classical baselines are drawn for
   comparison: contact degree and graph proximity to the active site.
-- **Null model (`--control`):** the same analysis with random site energies over
+- **Beyond distance:** the raw signal mostly says how close a residue is to the
+  active site, which proximity alone already captures. So each residue is also
+  scored as a percentile among residues at the same hop distance from the active
+  site (distances merged until every shell holds at least 5 residues), and the
+  AUC is recomputed. Plain proximity scores exactly 0.5 here; anything above it
+  is what the walk adds. Its baseline is contact degree, adjusted the same way.
+- **Null model (on by default, `--no-control` skips it):** the same analysis with random site energies over
   5 seeds, drawn as a mean ± sd band, plus how the real hump's gain ranks among
   the seeds. A hump that random energies reproduce is not specific to the
   hydropathy model.
@@ -76,7 +84,8 @@ Outputs land in `output/`:
   is anything more.
 - The allosteric AUC curve is the test of the paper's claim. Compare its best
   value against the proximity baseline and the control band, not only against
-  its own ends.
+  its own ends. The distance-adjusted curve is the stricter test: above 0.5 and
+  above the control band means the walk sees something proximity does not.
 
 ## Options you might use
 
@@ -86,7 +95,7 @@ Outputs land in `output/`:
     --active A:57,A:102     your active site (the walk starts here)
     --allosteric A:196      known allosteric residues (adds the AUC test)
     --site 2                which ALLO entry when a PDB has several (e.g. 1CE8_2)
-    --control               null model over random site energies (--control-seeds 5)
+    --no-control            skip the null model (about 6 times faster; --control-seeds 5)
     --site-energy random    random energies for the main run
     --scale 3               site-energy disorder strength
     --gammas 0,0.1,1,10     your own noise grid (must start at 0)

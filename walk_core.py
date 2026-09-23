@@ -298,6 +298,50 @@ def distal_mask(G, nodes, source_ids, fraction=0.5):
     return mask, min_hops
 
 
+def hop_distance(G, nodes, source_ids):
+    """Fewest contacts from any source to each residue (-1 if unreachable)."""
+    dist = {}
+    for s in source_ids:
+        for k, d in nx.single_source_shortest_path_length(G, s).items():
+            dist[k] = min(d, dist.get(k, d))
+    return np.array([dist.get(n, -1) for n in nodes], dtype=int)
+
+
+def distance_shells(dist, eligible, min_size=5):
+    """Group eligible residues by hop distance, merging neighbouring distances
+    until every group has at least min_size residues. Returns a list of index arrays."""
+    groups, cur = [], []
+    for d in sorted(set(dist[eligible].tolist())):
+        cur.extend(np.where(eligible & (dist == d))[0].tolist())
+        if len(cur) >= min_size:
+            groups.append(cur)
+            cur = []
+    if cur:
+        if groups:
+            groups[-1].extend(cur)
+        else:
+            groups.append(cur)
+    return [np.array(g) for g in groups]
+
+
+def shell_percentile(scores, shells, n):
+    """Each residue's score as a percentile among residues at the same distance
+    from the source (ties averaged; 0..1; nan outside the shells). It keeps only
+    what the score says beyond 'how close is this residue to the start'."""
+    out = np.full(n, np.nan)
+    for g in shells:
+        v = np.asarray(scores, dtype=float)[g]
+        order = np.argsort(v, kind="mergesort")
+        ranks = np.empty(len(v))
+        ranks[order] = np.arange(len(v), dtype=float)
+        for u in np.unique(v):             # average ranks within ties
+            m = v == u
+            if m.sum() > 1:
+                ranks[m] = ranks[m].mean()
+        out[g] = (ranks + 0.5) / len(v)
+    return out
+
+
 def hump_stats(gammas, values):
     """Peak, verdict and effect size of a curve over the gamma grid.
     baseline = the better of the two ends (fully quantum, most dephased);

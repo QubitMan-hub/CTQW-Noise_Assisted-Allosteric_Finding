@@ -112,17 +112,17 @@
             </label>
           </div>
           <label class="toggle">
-            <input type="checkbox" name="control" value="1" id="control">
+            <input type="checkbox" name="control" value="1" id="control" checked>
             <span class="switch" aria-hidden="true"></span>
             <span class="toggle-text">Compare against random site energies
-              <span class="toggle-sub">Reruns the walk with 5 random energy sets and draws them as a band. About 6 times longer.</span></span>
+              <span class="toggle-sub">Reruns the walk with 5 random energy sets. It tells you whether a result is about this protein or would appear in any network. Turn off for a quick look (about 6 times faster).</span></span>
           </label>
         </div>
       </details>
 
       <div class="actions">
         <button type="submit" class="btn-primary" id="run-btn"><span>Run the walk</span></button>
-        <span class="hint">About 30 s for 170 residues on 4 cores, a few minutes for 500.</span>
+        <span class="hint">With the control: about 2 to 3 min for 170 residues on 4 cores, longer for big proteins.</span>
       </div>
       <p class="error" id="error" role="alert" hidden></p>
     </form>
