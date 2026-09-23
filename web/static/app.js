@@ -135,7 +135,7 @@ form.addEventListener("submit", async (e) => {
     let body;
     try { body = await res.json(); } catch { body = { error: `The server answered ${res.status} without a result.` }; }
     if (!res.ok || body.error) showError(body.error || "The run failed.");
-    else { renderResults(body); loadRecent(body.run_id); }
+    else { renderResults(body); loadRecent(body.run_id); loadTable(); }
   } catch {
     showError("Could not reach the local server. Is web/app.py still running?");
   } finally {
@@ -793,7 +793,18 @@ document.querySelectorAll(".btn-roll").forEach((b) => b.addEventListener("click"
 
 /* ---------- live preview while typing an id ---------- */
 let previewToken = 0, previewTimer = null;
-function showPreview(info) { $("#id-preview").replaceChildren(infoPanel(info, { compact: true })); }
+function showPreview(info) {
+  const hit = tableMatch(info.id || pdbInput.value.trim().toUpperCase());
+  let note = null;
+  if (hit) {
+    const open = el("button", { type: "button", class: "linkish", text: "open the stored result" });
+    open.addEventListener("click", () => reopen(hit.run_id));
+    note = el("div", { class: "in-table" }, el("span", { class: "chip-mini solid", text: "in the table" }),
+      el("span", { text: `walked ${ago(hit.finished_utc)}${hit.beyond != null ? `, beyond distance ${fmt(hit.beyond)}` : ""}.` }), open,
+      el("span", { class: "muted", text: "or run it again with new settings." }));
+  }
+  $("#id-preview").replaceChildren(infoPanel(info, { compact: true }), note || "");
+}
 pdbInput.addEventListener("input", () => {
   clearTimeout(previewTimer);
   const id = pdbInput.value;
@@ -868,3 +879,120 @@ $("#next-fact").addEventListener("click", sideFact);
 sideFact();
 setInterval(() => { if (!document.hidden) sideFact(); }, 12000);
 loadRecent();
+
+/* ---------- Walk | Table ---------- */
+let tableRows = [], tableSort = { key: "finished_utc", dir: -1 };
+function setView(view, { scroll = true } = {}) {
+  const table = view === "table";
+  $("#view-walk").hidden = table;
+  $("#view-table").hidden = !table;
+  document.querySelectorAll(".view-tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.view === view)));
+  try { localStorage.setItem("qm-view", view); } catch {}
+  if (table) loadTable();
+  else redraw();                          // charts measure their box, so draw them once visible
+  if (scroll) $(".view-switch").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+document.querySelectorAll(".view-tab").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+
+const TABLE_COLS = [
+  { key: "name", label: "Protein" },
+  { key: "residues", label: "Residues", num: true },
+  { key: "beyond", label: "Beyond distance", num: true, hint: "0.5 = closeness alone" },
+  { key: "p_value", label: "p", num: true },
+  { key: "classical", label: "Classical", num: true },
+  { key: "beyond_gamma", label: "Noise helps" },
+  { key: "transport_verdict", label: "Transport" },
+  { key: "control", label: "Control" },
+  { key: "finished_utc", label: "When" },
+];
+
+async function loadTable() {
+  try { tableRows = await (await fetch("/api/table")).json(); } catch { return; }
+  if (!Array.isArray(tableRows)) tableRows = [];
+  $("#table-count").textContent = tableRows.length ? String(tableRows.length) : "";
+  if (!$("#view-table").hidden) renderTable();
+}
+
+function sortValue(r, key) {
+  const v = r[key];
+  if (key === "beyond_gamma") return r.beyond_verdict === "hump" ? v : null;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  return v === undefined ? null : v;
+}
+
+function renderTable() {
+  const q = $("#table-filter").value.trim().toLowerCase(), onlyLab = $("#table-labelled").checked;
+  let rows = tableRows.filter((r) => (!onlyLab || r.labelled) &&
+    (!q || r.name.toLowerCase().includes(q) || (r.title || "").toLowerCase().includes(q)));
+  const { key, dir } = tableSort;
+  rows = rows.slice().sort((a, b) => {
+    const x = sortValue(a, key), y = sortValue(b, key);
+    if (x === null && y === null) return 0;
+    if (x === null) return 1;                     // blanks always last
+    if (y === null) return -1;
+    return (x < y ? -1 : x > y ? 1 : 0) * dir;
+  });
+  const lab = tableRows.filter((r) => r.beyond != null);
+  const withP = lab.filter((r) => r.p_value != null), sig = withP.filter((r) => r.p_value < 0.05);
+  const withC = lab.filter((r) => r.classical != null), beat = withC.filter((r) => r.beyond > r.classical);
+  $("#table-summary").replaceChildren(
+    el("span", {}, "walks", el("strong", { text: String(tableRows.length) })),
+    el("span", {}, "proteins", el("strong", { text: String(new Set(tableRows.map((r) => r.name)).size) })),
+    lab.length ? el("span", {}, "with a known site", el("strong", { text: String(lab.length) })) : null,
+    withP.length ? el("span", {}, "p < 0.05", el("strong", { text: `${sig.length} of ${withP.length}` })) : null,
+    withC.length ? el("span", {}, "beat classical", el("strong", { text: `${beat.length} of ${withC.length}` })) : null);
+  $("#table-empty").hidden = tableRows.length > 0;
+  const head = el("tr", {}, TABLE_COLS.map((c) => {
+    const th = el("th", { class: c.num ? "num" : "", "data-key": c.key, title: c.hint || "" },
+      c.label, el("span", { class: "sort", text: key === c.key ? (dir > 0 ? "↑" : "↓") : "" }));
+    th.addEventListener("click", () => {
+      tableSort = { key: c.key, dir: tableSort.key === c.key ? -tableSort.dir : (c.num ? -1 : 1) };
+      renderTable();
+    });
+    return th;
+  }));
+  const dash = "–";
+  const body = rows.map((r) => {
+    const tr = el("tr", { class: r.stored ? "" : "gone", title: r.stored ? `Open ${r.name}` : `${r.name}: full results cleared, click to run it again` },
+      el("td", { class: "name" }, r.name + (r.source === "file" ? " (file)" : ""),
+        el("span", { class: "sub", text: r.title || (r.labelled ? "known site" : `from ${r.walk_from}`) })),
+      el("td", { class: "num", text: String(r.residues) }),
+      el("td", { class: "num" + (r.beyond != null && r.beyond >= 0.6 ? " strong-cell" : ""), text: r.beyond != null ? fmt(r.beyond) : dash }),
+      el("td", { class: "num" + (r.p_value != null && r.p_value < 0.05 ? " strong-cell" : ""), text: r.p_value != null ? fmtP(r.p_value) : dash }),
+      el("td", { class: "num", text: r.classical != null ? fmt(r.classical) : dash }),
+      el("td", {}, r.beyond_verdict === "hump" && r.beyond_gain >= 0.01 ? el("span", { class: "chip-mini solid", text: `γ ${fmtGamma(r.beyond_gamma)}` }) : dash),
+      el("td", {}, el("span", { class: "chip-mini" + (r.transport_verdict === "hump" ? "" : ""), text: verdictShort(r.transport_verdict, r.transport_gamma) })),
+      el("td", { text: r.control ? "yes" : "no" }),
+      el("td", { text: ago(r.finished_utc) }));
+    tr.addEventListener("click", () => openFromTable(r));
+    return tr;
+  });
+  $("#run-table").replaceChildren(el("thead", {}, head), el("tbody", {}, body));
+}
+$("#table-filter").addEventListener("input", renderTable);
+$("#table-labelled").addEventListener("change", renderTable);
+
+async function openFromTable(r) {
+  if (r.stored) {
+    setView("walk", { scroll: false });
+    await reopen(r.run_id);
+    return;
+  }
+  // full result cleared: set the form up to run it again with the same main settings
+  setView("walk", { scroll: false });
+  if (r.source === "pdb") {
+    pdbInput.value = r.name;
+    pdbInput.dispatchEvent(new Event("input"));
+  }
+  const ctl = $("#control"); if (ctl) ctl.checked = !!r.control;
+  showError(`${r.name}'s full results were cleared (only the last 30 are kept). ${r.source === "pdb" ? "The form is filled in; press Run the walk to redo it." : "Upload the file again to redo it."}`);
+  form.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// typing a PDB id that is already in the table offers its stored result
+function tableMatch(id) {
+  return tableRows.find((r) => r.name === id && r.source === "pdb" && r.stored);
+}
+
+try { const v = localStorage.getItem("qm-view"); if (v === "table") setView("table", { scroll: false }); } catch {}
+loadTable();

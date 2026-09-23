@@ -20,6 +20,9 @@ import run_protein as rp          # noqa: E402
 RUNS = os.path.join(HERE, "runs")
 KEEP_RUNS = 30
 WEB_RESULT = "web_result.json"
+# one summary line per finished walk, kept for good (full results are pruned after
+# KEEP_RUNS runs, the table row stays). Lives next to the runs, never in git.
+TABLE = os.path.join(RUNS, "table.jsonl")
 # one walk at a time: each walk already uses every CPU core, and two at once
 # would compete for cores and memory (easy to trigger with a second tab)
 RUN_LOCK = threading.Lock()
@@ -132,6 +135,10 @@ def _run():
         body = json.dumps(out)
         with open(os.path.join(run_dir, WEB_RESULT), "w") as f:     # lets the page reopen it later
             f.write(body)
+        row = table_row(out, run_id, source="file" if has_file else "pdb")
+        if not has_file:                                # the entry's title, if the page already looked it up
+            row["title"] = (_INFO_CACHE.get(inp) or {}).get("title")
+        add_table_row(row)
         prune_runs()
         return app.response_class(body, mimetype="application/json")
     except UserError as e:
@@ -310,13 +317,77 @@ def api_runs():
     return jsonify(items)
 
 
+def table_row(r, run_id, source):
+    """The numbers the table shows for one walk (everything else stays in its result file)."""
+    t, a, s, p = r["transport"]["stats"], r.get("allosteric"), r["summary"], r.get("parameters", {})
+    d = (a or {}).get("adjusted")
+    sig = (d or {}).get("significance")
+    row = {"run_id": run_id, "name": r["name"], "source": source, "finished_utc": r.get("finished_utc"),
+           "residues": s["residues"], "contacts": s["contacts"], "chains": s["chains"], "walk_from": s["walk_from"],
+           "site_energy": s["site_energy"], "scale": s["scale"], "cutoff": p.get("cutoff"),
+           "control": bool(r["transport"].get("control")), "elapsed_s": r.get("elapsed_s"),
+           "transport_verdict": t["verdict"], "transport_gamma": t["peak_gamma"],
+           "labelled": bool(a), "raw_best": a["stats"]["peak_value"] if a else None}
+    if d:
+        row.update(beyond=d["stats"]["peak_value"], beyond_gamma=d["stats"]["peak_gamma"],
+                   beyond_verdict=d["stats"]["verdict"], beyond_gain=d["stats"]["gain_abs"],
+                   p_value=sig["p_value"] if sig else None,
+                   classical=d["baselines"].get("classical walk, best rate"),
+                   control_best=max(d["control"]["best_seeds"]) if d.get("control") else None)
+    return row
+
+
+def add_table_row(row):
+    os.makedirs(RUNS, exist_ok=True)
+    with open(TABLE, "a") as f:
+        f.write(json.dumps(rp.jsonable(row)) + "\n")
+
+
+def read_table():
+    rows = []
+    try:
+        with open(TABLE) as f:
+            for line in f:
+                try:
+                    rows.append(json.loads(line))
+                except ValueError:
+                    continue                           # a half-written line is skipped, not fatal
+    except OSError:
+        pass
+    return rows
+
+
+def backfill_table():
+    """Walks finished before the table existed get their row once, at start-up."""
+    known = {r.get("run_id") for r in read_table()}
+    for d in reversed(_run_dirs()):
+        if d in known:
+            continue
+        try:
+            with open(os.path.join(RUNS, d, WEB_RESULT)) as f:
+                r = json.load(f)
+            src = "pdb" if re.fullmatch(r"[0-9][A-Z0-9]{3}", r.get("name", "")) else "file"
+            add_table_row(table_row(r, d, src))
+        except (OSError, ValueError, KeyError):
+            continue
+
+
+@app.get("/api/table")
+def api_table():
+    """Every walk this machine has run, newest first; 'stored' says if its full result can still be opened."""
+    stored = set(_run_dirs())
+    rows = [dict(r, stored=r.get("run_id") in stored) for r in reversed(read_table())]
+    return jsonify(rows)
+
+
 @app.get("/api/runs/<run_id>")
 def api_run_result(run_id):
     if not re.fullmatch(r"[0-9a-f]{12}", run_id):
         abort(404)
     path = os.path.join(RUNS, run_id, WEB_RESULT)
     if not os.path.isfile(path):
-        return jsonify({"error": "That walk is no longer stored (only the last 30 are kept)."}), 404
+        return jsonify({"error": f"That walk's full result is no longer stored (only the last {KEEP_RUNS} are kept). "
+                                 "Its numbers stay in the table; run it again to see the charts."}), 404
     with open(path) as f:
         return app.response_class(f.read(), mimetype="application/json")
 
@@ -341,5 +412,6 @@ def index():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
     os.makedirs(RUNS, exist_ok=True)
+    backfill_table()
     print(f"\n  QubitMan  ->  http://127.0.0.1:{port}\n")
     app.run(host="127.0.0.1", port=port, debug=False, threaded=True)

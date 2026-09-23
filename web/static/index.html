@@ -26,8 +26,16 @@
       </div>
     </header>
 
+    <nav class="view-switch" role="tablist" aria-label="Page view">
+      <button type="button" role="tab" class="view-tab" data-view="walk" aria-selected="true">
+        <svg class="px-icon" data-icon="wave" aria-hidden="true"></svg><span>Walk</span></button>
+      <button type="button" role="tab" class="view-tab" data-view="table" aria-selected="false">
+        <svg class="px-icon" data-icon="net" aria-hidden="true"></svg><span>Table</span><span class="tab-count" id="table-count"></span></button>
+    </nav>
+
     <div class="layout">
     <div class="main-col">
+    <div id="view-walk">
     <section class="card dice-card">
       <div class="section-head">
         <span class="px-bullet" aria-hidden="true"></span>
@@ -156,6 +164,33 @@
     </section>
 
     <div id="results"></div>
+    </div>
+
+    <section class="card" id="view-table" hidden>
+      <div class="section-head">
+        <span class="px-bullet" aria-hidden="true"></span>
+        <h2>Every protein walked here</h2>
+        <span class="section-sub">One row per walk, kept for good. Click a row to open its results.</span>
+      </div>
+      <div class="table-tools">
+        <input type="search" class="input" id="table-filter" placeholder="Filter by PDB id or name" spellcheck="false" aria-label="Filter the table">
+        <label class="check"><input type="checkbox" id="table-labelled"> <span>Only proteins with a known site</span></label>
+      </div>
+      <div class="table-summary" id="table-summary"></div>
+      <div class="table-scroll"><table class="run-table" id="run-table"></table></div>
+      <p class="note" id="table-empty" hidden>No walks yet. Run one from the Walk tab and it shows up here.</p>
+      <details class="fold guide">
+        <summary>How to read this table</summary>
+        <ul class="guide-list">
+          <li><strong>Beyond distance:</strong> how well the walk ranks the known allosteric residues against residues equally far from the active site. 0.5 is what closeness alone gives.</li>
+          <li><strong>p:</strong> the chance of doing that well with shuffled labels. Below 0.05 is the usual bar.</li>
+          <li><strong>Classical:</strong> the best score of an ordinary random walk on the same contacts. The quantum walk should beat it.</li>
+          <li><strong>Noise helps:</strong> the γ where a moderate amount of noise gives the best score, or a dash if it does not help.</li>
+          <li><strong>Transport:</strong> whether noise helps the signal reach the far side of the protein (common in any network).</li>
+          <li>Rows in grey have had their full results cleared (only the last 30 are kept); their numbers stay.</li>
+        </ul>
+      </details>
+    </section>
     </div>
 
     <aside class="side" aria-label="Sidebar">
