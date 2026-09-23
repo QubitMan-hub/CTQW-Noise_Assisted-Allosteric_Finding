@@ -592,7 +592,7 @@ body { transition: background-color 200ms ease, color 200ms ease; }
 .run-table tbody tr.row-detail { cursor: default; background: var(--sunken); }
 .run-table tbody tr.row-detail:hover { background: var(--sunken); }
 .run-table tr.row-detail td { white-space: normal; font-family: var(--sans); padding: 4px 16px 18px; }
-.row-desc { display: grid; gap: 12px; max-width: 760px; animation: drop-in 180ms ease both; }
+.row-desc { display: grid; gap: 12px; max-width: min(760px, calc(100vw - 80px)); position: sticky; left: 16px; animation: drop-in 180ms ease both; }
 .row-title { font-weight: 600; font-size: 14px; }
 .row-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 13.5px; color: var(--ink-2); }
 .row-lines li { display: grid; grid-template-columns: 58px 1fr; gap: 12px; align-items: start; }
