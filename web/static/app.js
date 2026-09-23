@@ -156,17 +156,6 @@ function verdictText(stats, what) {
   return `${what}: best most dephased`;
 }
 
-function qmodText(r) {
-  const q = r.qmod, s = r.summary;
-  switch (q.status) {
-    case "written": return `written · ${fmtInt(q.pauli_terms)} Pauli terms · ${fmtInt(q.size_kb)} KB · Trotter fidelity ${fmt(q.trotter.fidelity, 4)}`;
-    case "skipped_too_large": return `Qmod skipped, protein too large (${s.residues} residues > ${s.max_residues}). The graphs are unaffected.`;
-    case "skipped_by_user": return "skipped (graph only)";
-    case "unavailable": return "Qmod unavailable: the classiq package is not installed. The graphs are unaffected.";
-    default: return `Qmod could not be written (${q.error || "unknown error"}). The graphs are unaffected.`;
-  }
-}
-
 function summaryCard(r) {
   const s = r.summary, t = r.transport.stats, a = r.allosteric;
   const pill = (st, what) => el("span", { class: "pill " + (st.verdict === "hump" ? "solid" : "outline"), text: verdictText(st, what) });
@@ -177,12 +166,12 @@ function summaryCard(r) {
     el("div", { class: "summary-top" },
       el("div", {},
         el("h2", { class: "run-name", text: r.name }),
-        el("div", { class: "run-meta", text: `chains ${s.chains.join(", ")}  ·  ${fmtInt(s.contacts)} contacts  ·  ran in ${r.elapsed_s} s` })),
+        el("div", { class: "run-meta", text: `chains ${s.chains.join(", ")}  ·  ran in ${r.elapsed_s} s` })),
       el("div", { class: "pills" }, a ? pill(a.stats, "allosteric AUC") : null, pill(t, "transport"))),
     el("div", { class: "stats" },
-      stat("Residues", fmtInt(s.residues)), stat("Qubits", String(s.qubits)),
-      a ? stat("Best AUC", fmt(a.stats.peak_value)) : stat("Distal residues", fmtInt(s.distal_count)),
-      a ? stat("Best AUC at γ", fmtGamma(a.stats.peak_gamma)) : stat("Peak γ", fmtGamma(t.peak_gamma))),
+      stat("Residues", fmtInt(s.residues)), stat("Contacts", fmtInt(s.contacts)),
+      a ? stat("Best AUC", fmt(a.stats.peak_value)) : stat("Transport peak γ", fmtGamma(t.peak_gamma)),
+      a ? stat("Best AUC at γ", fmtGamma(a.stats.peak_gamma)) : stat("Gain over ends", t.verdict === "hump" ? pct(t.gain_rel) : "none")),
     el("dl", { class: "facts" },
       el("dt", { text: "Labels" }), el("dd", { text: r.label_note }),
       el("dt", { text: "Transport" }),
@@ -190,7 +179,7 @@ function summaryCard(r) {
         ` to the ${s.distal_count} residues at least ${s.distal_min_hops} contacts away`),
       el("dt", { text: "Site energies" }),
       el("dd", {}, el("span", { class: "mono", text: `${s.site_energy}, scale ${s.scale}` })),
-      el("dt", { text: "Qmod" }), el("dd", { text: qmodText(r) })),
+    ),
     notes);
 }
 
@@ -407,11 +396,11 @@ function mapCard(r) {
         el("h3", { class: "card-title", text: "Residue signal map" }),
         el("p", { class: "card-sub" }, `Signal each residue receives from the ${fromActive ? "active site" : "source"} at `,
           el("span", { class: "mono", text: `γ = ${fmtGamma(mp.gamma)}` }),
-          `${fromActive ? " (the best-AUC rate)" : " (the transport peak)"}. Darker means more signal. Residues sit at their 3D positions projected onto the protein's two main axes; lines are contacts.`))),
+          `${r.allosteric ? " (the best-AUC rate)" : " (the transport peak)"}. Darker means more signal. Residues sit at their 3D positions projected onto the protein's two main axes; lines are contacts.`))),
     el("div", { class: "map-legend" },
       el("span", { class: "ramp" }, el("span", { class: "mono", text: fmt(lo) }), el("span", { class: "ramp-bar" }), el("span", { class: "mono", text: fmt(hi) })),
       el("span", { class: "ring-key" }, ringKey("source"), el("span", { text: fromActive ? "active site" : `start ${r.summary.walk_from}` })),
-      fromActive ? el("span", { class: "ring-key" }, ringKey("other"), el("span", { text: "known allosteric" })) : null),
+      r.allosteric ? el("span", { class: "ring-key" }, ringKey("other"), el("span", { text: "known allosteric" })) : null),
     el("div", { class: "map-wrap", id: "map" }));
 }
 
@@ -499,7 +488,7 @@ function rankingCard(r) {
       el("div", {},
         el("h3", { class: "card-title", text: "Top residues by signal" }),
         el("p", { class: "card-sub" }, `Top ${top.length} of ${r.ranking_total} at `, el("span", { class: "mono", text: `γ = ${fmtGamma(r.map.gamma)}` }),
-          `, ${labelled ? "active-site residues" : "source"} excluded${labelled ? ` · ${hits} of these are known allosteric residues` : ""}`)),
+          `, ${r.summary.walk_from === "active site" ? "active-site residues" : "start residue"} excluded${labelled ? ` · ${hits} of these are known allosteric residues` : ""}`)),
       el("span", { class: "chev", "aria-hidden": "true" }))),
     el("div", { class: "table-scroll" }, el("table", {},
       el("thead", {}, el("tr", {}, el("th", { text: "#" }), el("th", { text: "Residue" }), el("th", { text: "Name" }),
@@ -524,7 +513,6 @@ function filesCard(r) {
         el("p", { class: "card-sub", text: "Everything this run produced, plus the exact settings used." })),
       el("span", { class: "chev", "aria-hidden": "true" }))),
     el("ul", { class: "files" },
-      item(f.qmod, `${name}.qmod`, "Classiq quantum-walk circuit (noise-free; add dephasing at run time)"),
       item(f.graphml, `${name}.graphml`, "Residue contact network"),
       item(f.result, `${name}_result.json`, "Every number behind the figures"),
       item(f.parameters, `${name}_parameters.json`, "Every setting used, the labels and a code version marker")),

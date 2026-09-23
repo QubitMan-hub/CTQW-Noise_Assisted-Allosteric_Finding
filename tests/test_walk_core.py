@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Checks that the fast solver reproduces the original dense solver, and that the
-quantum-encoding helpers are exact. Run: python tests/test_walk_core.py (or pytest)."""
+"""Checks that the fast solver reproduces the original dense solver. Run: python tests/test_walk_core.py (or pytest)."""
 import os, sys
 import numpy as np
 import networkx as nx
@@ -77,27 +76,6 @@ def test_populations_conserved():
     for g in (0.0, 3.0):
         pop = wc.run_walk(H, [1, 2], g, TLIST)
         assert np.max(np.abs(pop.sum(axis=0) - 1.0)) < 1e-6
-
-
-def test_pauli_actions_match_matrix():
-    rng = np.random.default_rng(0)
-    M = rng.standard_normal((8, 8)) + 1j * rng.standard_normal((8, 8))
-    H = M + M.conj().T
-    terms, n = wc.pauli_decompose(H)
-    assert np.max(np.abs(wc.pauli_reconstruct(terms, n) - H)) < 1e-12
-    psi = rng.standard_normal(8) + 1j * rng.standard_normal(8)
-    hpsi = sum(c * ph * psi[src] for src, ph, c in wc._pauli_actions(terms, n))
-    assert np.max(np.abs(hpsi - H @ psi)) < 1e-12
-
-
-def test_trotter_converges():
-    A, rn = protein_like(n=12)
-    H = wc.build_hamiltonian(A, rn)
-    Hp, nq = wc.pad_to_power_of_two(H)
-    terms, _ = wc.pauli_decompose(Hp)
-    coarse = wc.trotter_check(terms, nq, Hp, 0, 1.0, 2, 2, len(H))["fidelity"]
-    fine = wc.trotter_check(terms, nq, Hp, 0, 1.0, 2, 64, len(H))["fidelity"]
-    assert fine > 0.9999 and fine >= coarse
 
 
 def test_hump_stats():

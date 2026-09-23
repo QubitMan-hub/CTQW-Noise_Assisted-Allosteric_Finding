@@ -83,10 +83,12 @@ def from_table_row(row):
 def resolve(inp, labels_arg="auto", active=None, allosteric=None, site=None, default_chain=None):
     """Work out which labels apply. Returns (labels or None, note, other ALLO entries)."""
     if active or allosteric:
-        if not (active and allosteric):
-            raise ValueError("give both --active and --allosteric, or neither.")
-        return ({"origin": "user", "entry": "command line", "active": parse_residues(active, default_chain),
-                 "allosteric": parse_residues(allosteric, default_chain)}, "labels from the command line", [])
+        if not active:
+            raise ValueError("known allosteric residues need the active site too (--active).")
+        lab = {"origin": "user", "entry": "command line", "active": parse_residues(active, default_chain),
+               "allosteric": parse_residues(allosteric, default_chain) if allosteric else []}
+        return lab, ("your active site and allosteric residues" if allosteric
+                     else "your active site (no known allosteric residues: ranking only)"), []
     if labels_arg != "auto":
         return None, "labels off", []
     pid = structure_id(inp)

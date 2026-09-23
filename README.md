@@ -1,22 +1,36 @@
 # Environment-assisted quantum walk, one protein at a time
 
-Drop in a protein structure. The pipeline builds the residue contact network,
-runs a dephased quantum walk across 18 noise levels, and answers two questions:
+Give it any protein: a PDB id or a .pdb/.cif file. The pipeline builds the residue
+contact network, runs a dephased quantum walk across 18 noise levels, and answers
+two questions:
 
 1. **Transport:** does an intermediate amount of noise move signal through the
    protein better than a fully quantum or a strongly dephased walk (the
    environment-assisted hump)?
-2. **Allostery:** starting the walk at the active site, does intermediate noise
-   rank the experimentally known allosteric residues higher (ROC AUC)? Labels
-   come from the bundled ALLO benchmark table (118 proteins) or from you.
+2. **Allostery:** starting the walk at the active site, which residues receive
+   the most signal (candidate allosteric residues), and, where the real
+   allosteric residues are known, how well does it find them (ROC AUC)?
 
-It also writes the Classiq Qmod circuit for the noise-free walk.
+## What you need to give it
+
+| You give | You get |
+|---|---|
+| just a PDB id or file | transport curve + residue ranking, walk from the most-connected residue |
+| + the active site (`--active`) | walk from the active site: ranked candidate allosteric residues |
+| + known allosteric residues (`--allosteric`) | the ROC AUC test of how well the walk finds them |
+
+For the 118 proteins in the bundled ALLO benchmark table, the active site and
+allosteric residues are filled in automatically from the PDB id. A PDB file does
+not say where a protein's allosteric site is; that comes from experiments, which
+is why a score is only possible where those residues are known.
 
 ## Use it
 
     pip install -r requirements.txt
     python run_protein.py 1A8O.pdb                 # a file
-    python run_protein.py 1IWH --control           # a PDB id, plus the null model
+    python run_protein.py 4OBE --chains A          # any PDB id
+    python run_protein.py 4OBE --chains A --active A:12,A:13,A:61   # with an active site
+    python run_protein.py 1IWH --control           # an ALLO protein, plus the null model
 
 Or in the browser: `python web/app.py`, then open http://127.0.0.1:8000.
 
@@ -25,15 +39,14 @@ Outputs land in `output/`:
     NAME_hump.png/.svg/.csv        transport vs noise (300 dpi figure + data)
     NAME_allosteric.png/.svg/.csv  allosteric AUC vs noise, with baselines (if labels)
     NAME_ranking.csv               every residue ranked by the signal it receives
-    NAME.qmod                      the Classiq circuit (12-decimal coefficients)
     NAME.graphml                   the residue network
     NAME_parameters.json           every setting, the labels used, a code version
     NAME_result.json               every number behind the figures
 
 ## What is measured
 
-- **One walk per noise level.** With labels it starts at the active site and
-  feeds both results; without labels it starts at `--source` (default: the
+- **One walk per noise level.** It starts at the active site when one is known
+  and feeds every result; otherwise it starts at `--source` (default: the
   most-connected residue).
 - **Transport** is the time-integrated signal reaching the *distal* residues,
   those at least half the network's radius (in contacts) from the start. That is
@@ -50,8 +63,6 @@ Outputs land in `output/`:
   5 seeds, drawn as a mean ± sd band, plus how the real hump's gain ranks among
   the seeds. A hump that random energies reproduce is not specific to the
   hydropathy model.
-- **Qmod quality:** the Trotter fidelity of the written circuit against the exact
-  evolution, reported in the output.
 
 ## Reading the results honestly
 
@@ -66,18 +77,17 @@ Outputs land in `output/`:
 
 ## Options you might use
 
-    --source A:151          start residue when there are no labels (default: most connected)
+    --source A:151          start residue when no active site is known (default: most connected)
     --chains A              chains to include (default: the labels' chains, else all)
     --labels none           skip the allosteric test (default: ALLO lookup by PDB id)
-    --active A:57,A:102 --allosteric A:196,A:203   your own labels
+    --active A:57,A:102     your active site (the walk starts here)
+    --allosteric A:196      known allosteric residues (adds the AUC test)
     --site 2                which ALLO entry when a PDB has several (e.g. 1CE8_2)
     --control               null model over random site energies (--control-seeds 5)
     --site-energy random    random energies for the main run
     --scale 3               site-energy disorder strength
     --gammas 0,0.1,1,10     your own noise grid (must start at 0)
     --workers 4             parallel processes (default: CPU cores, max 8)
-    --no-qmod               skip the circuit (the slowest step for proteins under 200 residues)
-    --max-residues 200      skip the Qmod above this size (the graphs still run)
 
 ## Speed and exactness
 
@@ -88,20 +98,14 @@ Outputs land in `output/`:
 - `tests/test_walk_core.py` checks this against the original dense solver
   (agreement to about 1e-15 with noise; the old solver's own error without it).
 
-Typical times on 4 cores: 4OBE chain A (169 residues) about 25 s without the
-Qmod and 2 min with the 5-seed control; both chains (339 residues) about 2 min.
-Time grows roughly with the square of the residue count.
+Typical times on 4 cores: 4OBE chain A (169 residues) about 25 s, or about 2 min
+with the 5-seed control; both chains (339 residues) about 2 min. Time grows
+roughly with the square of the residue count.
 
 ## Notes
 
-- The Qmod is amplitude-encoded: about 7 qubits for 70 residues. An arbitrary
-  Hamiltonian gives up to N-squared Pauli terms, so large proteins skip the Qmod
-  by default (use one chain or a domain). The graphs have no size limit.
-- The Qmod encodes the noise-free walk. Dephasing is added at run time on
-  Classiq's density-matrix simulator; see NAME_execute.txt.
-- The encoding (qubit order and coefficients) was checked offline against the
-  classical walk; populations agree to about 1e-13. One real Classiq run is still
-  worth doing.
+- Crystal structures often hold several copies of the protein. Use `--chains` to
+  keep one, or the walk leaks across crystal contacts (4OBE has two KRAS copies).
 
 ## Labels and citation
 
@@ -113,8 +117,8 @@ datasets", *Patterns* 3(1), 100408 (2022), doi:10.1016/j.patter.2021.100408
 ## Files
 
     run_protein.py   the one command; analyze() is shared with the web app
-    walk_core.py     the physics: walk, metrics, Pauli decomposition, Trotter check
-    labels.py        active-site / allosteric labels (ALLO table or your own)
+    walk_core.py     the physics: walk, metrics, parallel sweeps
+    labels.py        active-site / allosteric residues (ALLO table or your own)
     rin_builder.py   structure -> residue network
     web/             the local web app
     tests/           python tests/test_walk_core.py, python tests/test_labels.py

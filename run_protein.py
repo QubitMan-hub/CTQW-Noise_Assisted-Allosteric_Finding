@@ -13,14 +13,15 @@ the output folder:
                              walk from the active site ranks the known allosteric
                              residues (ROC AUC) at each gamma, with baselines
     NAME_ranking.csv         every residue ranked by the signal it receives
-    NAME.qmod                the Classiq circuit (noise-free walk) + Trotter check
     NAME_parameters.json     every setting, the labels used and a code version
     NAME_result.json         all numbers behind the figures
 
-Labels are looked up automatically in the bundled ALLO benchmark table (118
-proteins) by PDB id, or given with --active/--allosteric. With labels, the walk
-starts at the active site and that one walk gives both curves; without them it
-starts at --source (default: the most-connected residue).
+Any PDB id or structure file works. The walk starts at the active site when one
+is known: looked up in the bundled ALLO benchmark table (118 proteins) by PDB id,
+or given with --active. Known allosteric residues (from ALLO or --allosteric)
+add the ROC AUC test; without them you still get the ranked candidate residues.
+With no active site at all, the walk starts at --source (default: the
+most-connected residue) and gives the transport curve and ranking.
 --control adds the null model: the same sweep with random site energies over
 several seeds, drawn as a band. Sweeps run in parallel over the CPU cores.
 """
@@ -42,22 +43,8 @@ DEFAULTS = dict(
     tmax=30.0, ntime=200, distal_fraction=0.5,
     control=False, control_seeds=5,
     labels="auto", active=None, allosteric=None, site=None,
-    qmod=True, qmod_time=1.0, qmod_order=2, qmod_repetitions=4, qmod_precision=12,
-    max_residues=200, force=False, workers=None,
+    workers=None,
 )
-
-EXEC_SCAFFOLD = '''\
-# Run this .qmod on Classiq after classiq.authenticate().
-# Noise-free (quantum end):
-#   qprog = synthesize(create_model(main)); execute(qprog).result()
-# Environment-assisted (the hump): run on SIMULATOR_DENSITY_MATRIX with a
-# dephasing channel whose rate is your gamma dial. Confirm the exact
-# ClassiqSimulatorNoiseSpecification fields on the live "custom noise models"
-# docs page, then sweep the rate and check it matches the hump graph here.
-# Coefficients are written with 12 decimals; see NAME_result.json for the
-# Trotter fidelity of this circuit against the exact evolution.
-'''
-
 
 class InputError(Exception):
     """A problem with the input, reported as a short message (no traceback)."""
@@ -71,32 +58,6 @@ def structure_to_graph(inp, outdir, model, chains, method, cutoff, min_seq_sep, 
     parts = (rb.build_by_heavy_atoms(residues, cutoff, min_seq_sep) if method == "heavy"
              else rb.build_by_representative(residues, method, cutoff, min_seq_sep))
     return rb.assemble_graph(*parts, weighted)
-
-
-def write_qmod(terms, n_qubits, source_index, evolution_time, order, repetitions, out_path,
-               decimal_precision=12):
-    """Emit the Qmod (offline, no login). Source is amplitude-encoded with qubit
-    0 as the least significant bit, matching Classiq's convention. Coefficients
-    are written with 12 decimals (Classiq's default of 4 perturbs H by ~1e-3)."""
-    from pathlib import Path
-    from classiq import (Output, QArray, QBit, qfunc, allocate, X, suzuki_trotter,
-                         create_model, Pauli, PauliTerm, write_qmod as classiq_write_qmod)
-    pmap = {"I": Pauli.I, "X": Pauli.X, "Y": Pauli.Y, "Z": Pauli.Z}
-    ham = [PauliTerm(pauli=[pmap[c] for c in s], coefficient=v) for s, v in terms]
-    set_bits = [q for q in range(n_qubits) if (source_index >> q) & 1]
-
-    @qfunc
-    def main(q: Output[QArray[QBit]]):
-        allocate(n_qubits, q)
-        for b in set_bits:
-            X(q[b])
-        suzuki_trotter(ham, evolution_coefficient=evolution_time,
-                       order=order, repetitions=repetitions, qbv=q)
-
-    base = os.path.splitext(out_path)[0]
-    classiq_write_qmod(create_model(main), os.path.basename(base),
-                       directory=Path(os.path.dirname(base) or "."), decimal_precision=decimal_precision)
-    return base + ".qmod", len(ham)
 
 
 def code_version():
@@ -273,16 +234,18 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         positive = np.zeros(N, dtype=bool)
         positive[rep["allosteric"]] = True
         positive &= eligible
-        if rep["active"] and positive.any() and (eligible & ~positive).any():
+        if not rep["active"]:
+            notes.append("none of the active-site residues are in the network; walking from one residue instead")
+        elif positive.any() and (eligible & ~positive).any():
             allo = {"rep": rep, "eligible": eligible, "positive": positive}
-        else:
-            notes.append("allosteric test skipped: no usable active-site or allosteric residues in this network")
+        elif labels["allosteric"]:
+            notes.append("allosteric test skipped: none of the known allosteric residues are in the network")
 
-    # 4) one walk per noise level: from the active site when labels exist (it feeds
-    #    both the transport curve and the allosteric test), else from one residue
-    if allo:
-        walk_src = list(allo["rep"]["active"])
-        source_id = o["source"] or max((nodes[i] for i in walk_src), key=degree.get)
+    # 4) one walk per noise level: from the active site when it is known (feeding
+    #    the transport curve, the ranking and the allosteric test), else from one residue
+    active = rep["active"] if labels else []
+    if active:
+        walk_src = list(active)
         walk_from = "active site"
     else:
         source_id = o["source"] or max(degree, key=degree.get)
@@ -355,44 +318,14 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
 
     # 6) signal map + ranking at the best-AUC gamma (labels) or the transport peak
     peak = a_res["stats"]["peak_index"] if a_res else t_stats["peak_index"]
-    map_scores, map_gamma, map_from = S[peak], gammas[peak], ("active site" if allo else "source")
+    map_scores, map_gamma, map_from = S[peak], gammas[peak], walk_from
     sources_idx = set(walk_src)
     known = set(np.where(allo["positive"])[0]) if allo else set()
     order = [i for i in np.argsort(-map_scores, kind="stable") if i not in sources_idx]
     ranking = [{"rank": r + 1, "id": nodes[i], "resname": resnames[i], "score": float(map_scores[i]),
                 "degree": int(degree[nodes[i]]), "known_allosteric": i in known} for r, i in enumerate(order)]
 
-    # 7) Qmod + Trotter check
-    qmod = {"status": None, "file": None}
-    H = hams["main"]
-    if not o["qmod"]:
-        qmod["status"] = "skipped_by_user"
-    elif N > o["max_residues"] and not o["force"]:
-        qmod["status"] = "skipped_too_large"
-    else:
-        try:
-            import classiq  # noqa: F401
-        except ImportError:
-            qmod["status"] = "unavailable"
-        if qmod["status"] is None:
-            Hp, nq = wc.pad_to_power_of_two(H)
-            terms, n = wc.pauli_decompose(Hp)
-            err = float(np.max(np.abs(wc.pauli_reconstruct(terms, n) - Hp)))
-            trot = wc.trotter_check(terms, nq, Hp, idx[source_id], o["qmod_time"], o["qmod_order"],
-                                    o["qmod_repetitions"], N)
-            try:
-                qfile, n_terms = write_qmod(terms, nq, idx[source_id], o["qmod_time"], o["qmod_order"],
-                                            o["qmod_repetitions"], os.path.join(outdir, prefix + ".qmod"),
-                                            o["qmod_precision"])
-                with open(os.path.join(outdir, prefix + "_execute.txt"), "w") as f:
-                    f.write(EXEC_SCAFFOLD)
-                qmod.update(status="written", file=os.path.basename(qfile), pauli_terms=n_terms, qubits=nq,
-                            decomposition_error=err, size_kb=round(os.path.getsize(qfile) / 1024),
-                            trotter=trot, source_basis_index=idx[source_id])
-            except Exception as e:
-                qmod.update(status="failed", error=(str(e).splitlines() or [type(e).__name__])[0][:160])
-
-    # 8) files
+    # 7) files
     files = {"graphml": prefix + ".graphml", "hump_csv": prefix + "_hump.csv",
              "hump_png": prefix + "_hump.png", "hump_svg": prefix + "_hump.svg",
              "ranking_csv": prefix + "_ranking.csv", "parameters": prefix + "_parameters.json",
@@ -428,12 +361,10 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
                     "contacts", "known_allosteric"])
         w.writerows([[r["rank"], r["id"], r["resname"], f"{r['score']:.6f}", r["degree"],
                       "yes" if r["known_allosteric"] else ""] for r in ranking])
-    if qmod["file"]:
-        files["qmod"] = qmod["file"]
 
     params = {k: o[k] for k in DEFAULTS if k != "workers"}
     params.update(input=inp if not os.path.isfile(inp) else os.path.basename(inp), cutoff=cutoff, gammas=gammas,
-                  chains_used=sorted({n.split(':')[0] for n in nodes}), qmod_source=source_id,
+                  chains_used=sorted({n.split(':')[0] for n in nodes}),
                   walk_from=walk_from, distal_min_hops=distal_hops, labels_used=(
                       {k: v for k, v in labels.items() if k not in ("active", "allosteric")} if labels else None),
                   code_version=code_version(), created_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
@@ -446,16 +377,16 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
     xy = _layout(G, nodes)
     result = {
         "name": prefix, "elapsed_s": round(time.time() - t0, 1), "notes": notes, "label_note": label_note,
-        "summary": {"residues": N, "contacts": G.number_of_edges(), "qubits": max(1, int(np.ceil(np.log2(N)))),
+        "summary": {"residues": N, "contacts": G.number_of_edges(),
                     "chains": sorted({n.split(':')[0] for n in nodes}), "walk_from": walk_from,
-                    "qmod_source": source_id,
+                    "n_start": len(walk_src),
                     "distal_count": int(distal.sum()), "distal_min_hops": distal_hops,
-                    "site_energy": o["site_energy"], "scale": o["scale"], "max_residues": o["max_residues"]},
+                    "site_energy": o["site_energy"], "scale": o["scale"]},
         "gammas": gammas,
         "transport": {"distal_mean": transport.tolist(),
                       "stats": t_stats, "control": t_ctrl},
         "allosteric": a_res,
-        "qmod": qmod, "allo_entries": allo_entries,
+        "allo_entries": allo_entries,
         "map": {"nodes": [{"id": n, "resname": resnames[i], "x": float(xy[i, 0]), "y": float(xy[i, 1]),
                            "score": float(map_scores[i]), "degree": int(degree[n]),
                            "role": ("source" if i in sources_idx else "allosteric" if i in known else "")}
@@ -495,9 +426,9 @@ def _verdict_line(stats, what):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="One protein: structure -> network, noise sweep, allosteric test, Qmod.")
+    ap = argparse.ArgumentParser(description="One protein: structure -> network, noise sweep, allosteric test.")
     ap.add_argument("input", help="PDB/mmCIF file, or a 4-character PDB id.")
-    ap.add_argument("--source", default=None, help="Start residue without labels, e.g. A:151 (default: most connected); also the Qmod start.")
+    ap.add_argument("--source", default=None, help="Start residue when no active site is known, e.g. A:151 (default: most connected).")
     ap.add_argument("--chains", default=None, help="Chains to include (default: the labels' chains, else all).")
     ap.add_argument("--model", type=int, default=0, help="Model index for NMR files.")
     ap.add_argument("--method", choices=["cb", "ca", "heavy"], default="cb")
@@ -513,15 +444,9 @@ def main():
     ap.add_argument("--control", action="store_true", help="Also run random site energies (null model) over several seeds.")
     ap.add_argument("--control-seeds", type=int, default=5)
     ap.add_argument("--labels", choices=["auto", "none"], default="auto", help="auto: ALLO table by PDB id; none: skip.")
-    ap.add_argument("--active", default=None, help="Active-site residues, e.g. A:57,A:102.")
-    ap.add_argument("--allosteric", default=None, help="Known allosteric residues, e.g. A:196,A:203.")
+    ap.add_argument("--active", default=None, help="Active-site residues, e.g. A:57,A:102 (the walk starts here).")
+    ap.add_argument("--allosteric", default=None, help="Known allosteric residues, e.g. A:196,A:203 (adds the AUC test).")
     ap.add_argument("--site", default=None, help="Which ALLO entry when a PDB has several (e.g. 2 for 1CE8_2).")
-    ap.add_argument("--time", type=float, default=1.0, help="Evolution time in the circuit.")
-    ap.add_argument("--order", type=int, default=2)
-    ap.add_argument("--repetitions", type=int, default=4)
-    ap.add_argument("--max-residues", type=int, default=200, help="Skip the Qmod above this size unless --force.")
-    ap.add_argument("--force", action="store_true")
-    ap.add_argument("--no-qmod", action="store_true", help="Skip the circuit.")
     ap.add_argument("--workers", type=int, default=None, help="Parallel processes (default: CPU cores, max 8).")
     ap.add_argument("--outdir", default="output")
     ap.add_argument("--prefix", default=None)
@@ -531,9 +456,7 @@ def main():
     opts = dict(source=a.source, chains=a.chains, model=a.model, method=a.method, cutoff=a.cutoff,
                 min_seq_sep=a.min_seq_sep, weighted=a.weighted, site_energy=a.site_energy, scale=a.scale,
                 seed=a.seed, tmax=a.tmax, ntime=a.ntime, control=a.control, control_seeds=a.control_seeds,
-                labels=a.labels, active=a.active, allosteric=a.allosteric, site=a.site, qmod=not a.no_qmod,
-                qmod_time=a.time, qmod_order=a.order, qmod_repetitions=a.repetitions,
-                max_residues=a.max_residues, force=a.force, workers=a.workers)
+                labels=a.labels, active=a.active, allosteric=a.allosteric, site=a.site, workers=a.workers)
     if a.gammas:
         opts["gammas"] = [float(x) for x in a.gammas.split(",")]
     try:
@@ -558,12 +481,6 @@ def main():
               f"{st['peak_value']:.3f} best at gamma={st['peak_gamma']:g}, {st['dephased_value']:.3f} dephased")
         print("  " + _verdict_line(st, "allosteric AUC"))
         print("  baselines: " + ", ".join(f"{k} {v:.3f}" for k, v in al["baselines"].items()))
-    q = r["qmod"]
-    if q["status"] == "written":
-        print(f"  qmod: {q['pauli_terms']} Pauli terms, Trotter fidelity {q['trotter']['fidelity']:.6f} "
-              f"(order {a.order}, {a.repetitions} steps)")
-    else:
-        print(f"  qmod: {q['status'].replace('_', ' ')}")
     for n in r["notes"]:
         print(f"  [note] {n}")
     print(f"\nDone in {r['elapsed_s']} s. Outputs in {a.outdir}/")

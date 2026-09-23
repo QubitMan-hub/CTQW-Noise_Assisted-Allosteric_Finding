@@ -66,7 +66,7 @@
               <label><input type="radio" name="labels" value="custom"><span>my residues</span></label>
               <label><input type="radio" name="labels" value="none"><span>none</span></label>
             </div>
-            <span class="field-help">ALLO lookup uses the bundled benchmark table (118 proteins, Wu et al. 2022) when the PDB id is in it.</span>
+            <span class="field-help">Any PDB id works. ALLO lookup adds known sites for the 118 benchmark proteins (Wu et al. 2022); for others, give the active site under "my residues" to get candidate allosteric residues.</span>
           </div>
           <div class="custom-labels span2" id="custom-labels" hidden>
             <label class="field">
@@ -74,7 +74,7 @@
               <input type="text" name="active" class="input mono" placeholder="A:57, A:102" spellcheck="false">
             </label>
             <label class="field">
-              <span class="field-label">Known allosteric residues</span>
+              <span class="field-label">Known allosteric residues (optional)</span>
               <input type="text" name="allosteric" class="input mono" placeholder="A:196, A:203" spellcheck="false">
             </label>
           </div>
@@ -84,17 +84,12 @@
             <span class="toggle-text">Compare against random site energies
               <span class="toggle-sub">Null model over 5 random seeds, drawn as a band. Takes about 6 times longer.</span></span>
           </label>
-          <label class="toggle">
-            <input type="checkbox" name="no_qmod" value="1">
-            <span class="switch" aria-hidden="true"></span>
-            <span class="toggle-text">Graph only, skip Qmod</span>
-          </label>
         </div>
       </details>
 
       <div class="actions">
         <button type="submit" class="btn-primary" id="run-btn">Run</button>
-        <span class="hint">Runs the real pipeline locally: under a minute for 70 residues, a few minutes for 250.</span>
+        <span class="hint">Runs the real pipeline locally: about 30 s for 170 residues, a few minutes for 500.</span>
       </div>
       <p class="error" id="error" role="alert" hidden></p>
     </form>
@@ -104,7 +99,7 @@
         <span class="spinner" aria-hidden="true"></span>
         <div>
           <div class="loading-title">Running pipeline</div>
-          <div class="loading-sub">network, labels, noise sweep over 18 rates on all CPU cores, Qmod</div>
+          <div class="loading-sub">network, labels, noise sweep over 18 rates on all CPU cores</div>
         </div>
         <span class="elapsed mono" id="elapsed">00:00</span>
       </div>

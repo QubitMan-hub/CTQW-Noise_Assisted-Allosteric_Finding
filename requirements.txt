@@ -4,4 +4,3 @@ networkx
 biopython
 matplotlib
 flask     # only needed for the web app (web/app.py)
-classiq   # only needed to generate the .qmod; the hump graph runs without it

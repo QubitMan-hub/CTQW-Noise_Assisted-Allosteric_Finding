@@ -59,11 +59,11 @@ def parse_options(form):
         raise UserError("Labels must be auto, none or custom.")
     active = allosteric = None
     if mode == "custom":
-        active, allosteric = form.get("active", "").strip(), form.get("allosteric", "").strip()
-        if not active or not allosteric:
-            raise UserError("Custom labels need both active-site and allosteric residues, e.g. A:57,A:102.")
+        active, allosteric = form.get("active", "").strip(), form.get("allosteric", "").strip() or None
+        if not active:
+            raise UserError("Give the active-site residues, e.g. A:57,A:102 (allosteric residues are optional).")
     return {"source": source or None, "chains": chains or None, "site_energy": site_energy, "scale": scale,
-            "qmod": not flag("no_qmod"), "control": flag("control"),
+            "control": flag("control"),
             "labels": "none" if mode == "none" else "auto", "active": active, "allosteric": allosteric}
 
 
