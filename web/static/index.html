@@ -32,6 +32,8 @@
       </div>
     </header>
 
+    <div class="layout">
+    <div class="main-col">
     <section class="card dice-card">
       <div class="section-head">
         <span class="px-bullet" aria-hidden="true"></span>
@@ -160,6 +162,32 @@
     </section>
 
     <div id="results"></div>
+    </div>
+
+    <aside class="side" aria-label="Sidebar">
+      <section class="card side-card">
+        <div class="side-head"><span class="px-bullet" aria-hidden="true"></span><h2>Recent walks</h2></div>
+        <ul class="recent" id="recent"><li class="recent-empty">Your walks show up here. Click one to reopen its results instantly.</li></ul>
+      </section>
+      <section class="card side-card">
+        <div class="side-head"><span class="px-bullet" aria-hidden="true"></span><h2>Glossary</h2></div>
+        <dl class="gloss">
+          <dt>Quantum walk</dt><dd>Signal spreading through the contact network as a wave, over many residues at once.</dd>
+          <dt>γ, dephasing rate</dt><dd>How fast noise scrambles the walker's phases. 0 is fully quantum; large values make it hop classically, then freeze.</dd>
+          <dt>Transport hump</dt><dd>The signal reaching distant residues peaks at an in-between γ: a little noise helps.</dd>
+          <dt>Allosteric site</dt><dd>A pocket away from the active site where a binding molecule still changes what the protein does.</dd>
+          <dt>ROC AUC</dt><dd>The chance that a known allosteric residue gets more signal than a random other residue. 0.5 is a coin flip, 1 is perfect.</dd>
+          <dt>Baselines</dt><dd>Simple rankings without any walk (number of contacts, distance to the active site). The walk should beat them.</dd>
+          <dt>Random control</dt><dd>The same walk with random site energies. If it shows the same hump, the hump is not about the protein's chemistry.</dd>
+        </dl>
+      </section>
+      <section class="card side-card">
+        <div class="side-head"><span class="px-bullet" aria-hidden="true"></span><h2>Did you know</h2></div>
+        <p class="side-fact" id="side-fact"></p>
+        <button type="button" class="linkish" id="next-fact">another one</button>
+      </section>
+    </aside>
+    </div>
 
     <footer class="foot">
       <svg class="px-icon" data-icon="qubit" aria-hidden="true"></svg>

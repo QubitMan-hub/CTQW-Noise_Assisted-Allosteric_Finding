@@ -135,7 +135,7 @@ form.addEventListener("submit", async (e) => {
     let body;
     try { body = await res.json(); } catch { body = { error: `The server answered ${res.status} without a result.` }; }
     if (!res.ok || body.error) showError(body.error || "The run failed.");
-    else renderResults(body);
+    else { renderResults(body); loadRecent(body.run_id); }
   } catch {
     showError("Could not reach the local server. Is web/app.py still running?");
   } finally {
@@ -153,8 +153,10 @@ function renderResults(r) {
   current = r;
   charts.length = 0;
   const root = $("#results");
-  root.replaceChildren(...[summaryCard(r), r.allosteric ? allostericCard(r) : null, transportCard(r),
-    mapCard(r), rankingCard(r), filesCard(r)].filter(Boolean));
+  const pair = (...cards) => el("div", { class: "pair" + (cards.length === 2 ? " two" : "") }, cards);
+  root.replaceChildren(summaryCard(r),
+    r.allosteric ? pair(allostericCard(r), transportCard(r)) : transportCard(r),
+    pair(mapCard(r), rankingCard(r)), filesCard(r));
   [...root.children].forEach((c, i) => { c.classList.add("reveal"); c.style.animationDelay = `${i * 40}ms`; });
   redraw();
   root.firstElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -301,7 +303,7 @@ function drawChart(c) {
   if (!host) return;
   host.replaceChildren();
   const W = Math.max(300, host.clientWidth), H = Math.round(Math.min(340, Math.max(220, W * 0.46)));
-  const m = { l: 64, r: c.baselines.length ? 112 : 16, t: 24, b: 44 };
+  const m = { l: 64, r: 16, t: 24, b: 44 };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
   const gammas = c.gammas, gmax = gammas[gammas.length - 1];
   const vals = c.series.flatMap((s) => s.values.map((v, i) => [v - (s.sd ? s.sd[i] : 0), v + (s.sd ? s.sd[i] : 0)]).flat())
@@ -328,7 +330,9 @@ function drawChart(c) {
   if (c.chance !== null) svg("line", { x1: m.l, x2: W - m.r, y1: Y(c.chance), y2: Y(c.chance), stroke: C("--line-2"), "stroke-width": 1 }, root);
   for (const b of c.baselines) {
     svg("line", { x1: m.l, x2: W - m.r, y1: Y(b.value), y2: Y(b.value), stroke: C("--ctrl"), "stroke-width": 1, "stroke-dasharray": "1.5 3" }, root);
-    svg("text", { x: W - m.r + 6, y: Y(b.value) + 3.5, "font-size": 10.5, fill: C("--muted"), text: `${{ "proximity to active site": "proximity", "contact degree": "degree" }[b.label] || b.label} ${fmt(b.value)}` }, root);
+    svg("text", { x: W - m.r - 4, y: Y(b.value) - 5, "text-anchor": "end", "font-size": 10.5, fill: C("--muted"),
+      "paint-order": "stroke", stroke: C("--card"), "stroke-width": 3,
+      text: `${{ "proximity to active site": "proximity", "contact degree": "degree" }[b.label] || b.label} ${fmt(b.value)}` }, root);
   }
   const pg = c.peakGamma;
   svg("line", { x1: X(pg), x2: X(pg), y1: m.t - 6, y2: m.t + ih, stroke: C("--faint"), "stroke-width": 1, "stroke-dasharray": "3 3" }, root);
@@ -691,3 +695,58 @@ pdbInput.addEventListener("input", () => {
     }
   }, 350);
 });
+
+/* ---------- sidebar: recent walks + facts ---------- */
+function ago(iso) {
+  if (!iso) return "";
+  const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+  return `${Math.floor(s / 86400)} d ago`;
+}
+function verdictShort(v, g) { return v === "hump" ? `hump at γ ${fmtGamma(g)}` : v === "quantum" ? "best at γ 0" : "best most dephased"; }
+let activeRun = null;
+async function loadRecent(markId) {
+  if (markId) activeRun = markId;
+  let items = [];
+  try { items = await (await fetch("/api/runs")).json(); } catch { return; }
+  const list = $("#recent");
+  if (!Array.isArray(items) || !items.length) {
+    list.replaceChildren(el("li", { class: "recent-empty", text: "Your walks show up here. Click one to reopen its results instantly." }));
+    return;
+  }
+  list.replaceChildren(...items.map((it) => {
+    const main = it.auc ? `AUC ${fmt(it.auc.best)} · ${verdictShort(it.transport.verdict, it.transport.peak_gamma)}`
+      : verdictShort(it.transport.verdict, it.transport.peak_gamma);
+    const btn = el("button", { type: "button", class: "recent-item" + (it.run_id === activeRun ? " active" : ""),
+      title: `Reopen ${it.name}` },
+      el("span", { class: "recent-id", text: it.name.slice(0, 8) }),
+      el("span", { class: "recent-main", text: main }),
+      el("span", { class: "recent-sub", text: `${it.residues} res · ${it.control ? "with control · " : ""}${ago(it.finished_utc)}` }));
+    btn.addEventListener("click", () => reopen(it.run_id));
+    return el("li", {}, btn);
+  }));
+}
+async function reopen(id) {
+  clearError();
+  try {
+    const res = await fetch(`/api/runs/${id}`);
+    const body = await res.json();
+    if (!res.ok || body.error) { showError(body.error || "Could not reopen that walk."); loadRecent(); return; }
+    activeRun = id;
+    renderResults(body);
+    document.querySelectorAll(".recent-item").forEach((b) => b.classList.remove("active"));
+    loadRecent();
+  } catch { showError("Could not reach the local server. Is web/app.py still running?"); }
+}
+let sideIdx = Math.floor(Math.random() * FACTS.length);
+function sideFact() {
+  const f = $("#side-fact");
+  f.style.opacity = "0";
+  setTimeout(() => { f.textContent = FACTS[sideIdx % FACTS.length]; sideIdx += 1; f.style.opacity = "1"; }, 200);
+}
+$("#next-fact").addEventListener("click", sideFact);
+sideFact();
+setInterval(() => { if (!document.hidden) sideFact(); }, 12000);
+loadRecent();

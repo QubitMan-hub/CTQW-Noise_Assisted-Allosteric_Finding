@@ -19,6 +19,7 @@ import run_protein as rp          # noqa: E402
 
 RUNS = os.path.join(HERE, "runs")
 KEEP_RUNS = 30
+WEB_RESULT = "web_result.json"
 # one walk at a time: each walk already uses every CPU core, and two at once
 # would compete for cores and memory (easy to trigger with a second tab)
 RUN_LOCK = threading.Lock()
@@ -126,9 +127,13 @@ def _run():
         except rp.InputError as e:
             msg = str(e)
             raise UserError(msg[:1].upper() + msg[1:])
+        out = rp.jsonable(to_json(result, run_id))
+        out["finished_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        body = json.dumps(out)
+        with open(os.path.join(run_dir, WEB_RESULT), "w") as f:     # lets the page reopen it later
+            f.write(body)
         prune_runs()
-        return app.response_class(json.dumps(rp.jsonable(to_json(result, run_id))),
-                                  mimetype="application/json")
+        return app.response_class(body, mimetype="application/json")
     except UserError as e:
         shutil.rmtree(run_dir, ignore_errors=True)
         return jsonify({"error": str(e)}), 400
@@ -274,6 +279,46 @@ def api_random():
         if known or 40 <= info["run_residues"] <= 350:
             return jsonify(info)
     return jsonify({"error": "No luck this time. Roll again."}), 503
+
+
+# ---------------------------------------------------------------- recent walks
+def _run_dirs():
+    if not os.path.isdir(RUNS):
+        return []
+    dirs = [d for d in os.listdir(RUNS) if re.fullmatch(r"[0-9a-f]{12}", d)
+            and os.path.isfile(os.path.join(RUNS, d, WEB_RESULT))]
+    return sorted(dirs, key=lambda d: os.path.getmtime(os.path.join(RUNS, d, WEB_RESULT)), reverse=True)
+
+
+@app.get("/api/runs")
+def api_runs():
+    """The most recent finished walks, newest first, with a one-line summary each."""
+    items = []
+    for d in _run_dirs()[:15]:
+        try:
+            with open(os.path.join(RUNS, d, WEB_RESULT)) as f:
+                r = json.load(f)
+        except (OSError, ValueError):
+            continue
+        t, a = r["transport"]["stats"], r.get("allosteric")
+        items.append({"run_id": d, "name": r["name"], "finished_utc": r.get("finished_utc"),
+                      "residues": r["summary"]["residues"], "elapsed_s": r.get("elapsed_s"),
+                      "control": bool(r["transport"].get("control")),
+                      "transport": {"verdict": t["verdict"], "peak_gamma": t["peak_gamma"]},
+                      "auc": ({"best": a["stats"]["peak_value"], "peak_gamma": a["stats"]["peak_gamma"],
+                               "verdict": a["stats"]["verdict"]} if a else None)})
+    return jsonify(items)
+
+
+@app.get("/api/runs/<run_id>")
+def api_run_result(run_id):
+    if not re.fullmatch(r"[0-9a-f]{12}", run_id):
+        abort(404)
+    path = os.path.join(RUNS, run_id, WEB_RESULT)
+    if not os.path.isfile(path):
+        return jsonify({"error": "That walk is no longer stored (only the last 30 are kept)."}), 404
+    with open(path) as f:
+        return app.response_class(f.read(), mimetype="application/json")
 
 
 @app.errorhandler(413)
