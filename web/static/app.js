@@ -667,7 +667,7 @@ function infoPanel(info, { compact = false, onRoll = null } = {}) {
   return card;
 }
 
-const CONTROL_FACTOR = 6;
+const CONTROL_FACTOR = 4;   // measured: 1IWH 19 s plain, 71 s with the control
 
 /* ---------- the dice ---------- */
 async function roll(kind, button) {

@@ -95,7 +95,7 @@ Outputs land in `output/`:
     --active A:57,A:102     your active site (the walk starts here)
     --allosteric A:196      known allosteric residues (adds the AUC test)
     --site 2                which ALLO entry when a PDB has several (e.g. 1CE8_2)
-    --no-control            skip the null model (about 6 times faster; --control-seeds 5)
+    --no-control            skip the null model (about 4 times faster; --control-seeds 5)
     --site-energy random    random energies for the main run
     --scale 3               site-energy disorder strength
     --gammas 0,0.1,1,10     your own noise grid (must start at 0)
@@ -110,9 +110,9 @@ Outputs land in `output/`:
 - `tests/test_walk_core.py` checks this against the original dense solver
   (agreement to about 1e-15 with noise; the old solver's own error without it).
 
-Typical times on 4 cores: 4OBE chain A (169 residues) about 25 s, or about 2 min
-with the 5-seed control; both chains (339 residues) about 2 min. Time grows
-roughly with the square of the residue count.
+Typical times on 4 cores with the default 5-seed control: 4OBE chain A (169
+residues) about 2 min, 1IWH (141) about 70 s; with `--no-control` about 4 times
+less. Time grows roughly with the square of the residue count.
 
 ## Notes
 

@@ -458,7 +458,7 @@ def main():
     ap.add_argument("--ntime", type=int, default=200)
     ap.add_argument("--control", action=argparse.BooleanOptionalAction, default=True,
                     help="Random site energies (null model) over several seeds; on by default, --no-control "
-                         "skips it (about 6 times faster, but a hump without it is not evidence).")
+                         "skips it (about 4 times faster, but a hump without it is not evidence).")
     ap.add_argument("--control-seeds", type=int, default=5)
     ap.add_argument("--labels", choices=["auto", "none"], default="auto", help="auto: ALLO table by PDB id; none: skip.")
     ap.add_argument("--active", default=None, help="Active-site residues, e.g. A:57,A:102 (the walk starts here).")
