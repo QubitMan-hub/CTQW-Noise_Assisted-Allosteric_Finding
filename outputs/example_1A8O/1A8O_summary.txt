@@ -1,0 +1,11 @@
+Residue interaction network summary
+-----------------------------------
+contact method     : cb
+distance cutoff (A) : 8.0
+edge weighting      : binary
+residues (nodes)    : 70
+contacts (edges)    : 305
+graph density       : 0.1263
+connected comps     : 1
+mean/min/max degree : 8.71 / 3 / 15
+chains included     : A
