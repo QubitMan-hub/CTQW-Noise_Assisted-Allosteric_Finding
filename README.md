@@ -33,6 +33,9 @@ is why a score is only possible where those residues are known.
     python run_protein.py 1IWH --control           # an ALLO protein, plus the null model
 
 Or in the browser: `python web/app.py`, then open http://127.0.0.1:8000.
+The site (QubitMan) can also roll a random protein, or one with a known allosteric
+site, and shows a short summary of any PDB entry before you run it. It needs an
+internet connection to reach files.rcsb.org.
 
 Outputs land in `output/`:
 

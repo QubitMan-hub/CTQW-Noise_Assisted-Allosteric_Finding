@@ -3,22 +3,52 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Protein Walk</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23161616'/%3E%3C/svg%3E">
+  <title>QubitMan</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8' shape-rendering='crispEdges'%3E%3Cpath fill='%23161616' d='M2 0h4v1H2zM1 1h1v1H1zM6 1h1v1H6zM0 2h1v3H0zM7 2h1v3H7zM1 5h1v1H1zM6 5h1v1H6zM2 6h4v1H2zM3 2h2v1H3zM2 3h1v1H2zM5 3h1v1H5zM3.5 3h1v3h-1z'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <canvas id="bg" aria-hidden="true"></canvas>
   <main class="page">
-    <header class="masthead">
-      <h1>Protein Walk</h1>
-      <p>Environment-assisted quantum walk on a protein's residue network: does intermediate noise help signal travel, and does it find the known allosteric residues?</p>
+    <header class="hero">
+      <div class="brand">
+        <svg id="mascot" class="mascot" aria-hidden="true"></svg>
+        <div>
+          <h1 class="wordmark-wrap"><svg id="wordmark" class="wordmark" role="img" aria-label="QubitMan"></svg></h1>
+          <p class="tagline">Drop in any protein and watch a noisy quantum walker hop from residue to residue. Find out where the signal goes, and whether a little noise helps it get there.</p>
+        </div>
+      </div>
+      <div class="chips">
+        <span class="chip">any PDB id</span>
+        <span class="chip">18 noise levels</span>
+        <span class="chip">runs on your machine</span>
+        <span class="chip">every residue ranked</span>
+      </div>
     </header>
 
+    <section class="card dice-card">
+      <div class="section-head">
+        <span class="px-bullet" aria-hidden="true"></span>
+        <h2>Roll a protein</h2>
+        <span class="section-sub">Not sure where to start? Let the dice pick one.</span>
+      </div>
+      <div class="dice-row">
+        <button type="button" class="btn-roll" data-kind="any"><svg class="px-icon" data-icon="dice" aria-hidden="true"></svg><span>Any protein</span></button>
+        <button type="button" class="btn-roll" data-kind="allosteric"><svg class="px-icon" data-icon="key" aria-hidden="true"></svg><span>One with a known allosteric site</span></button>
+      </div>
+      <div id="dice-result" aria-live="polite"></div>
+    </section>
+
     <form id="run-form" class="card input-card" novalidate>
-      <div class="field-label">Structure</div>
+      <div class="section-head">
+        <span class="px-bullet" aria-hidden="true"></span>
+        <h2>Run a walk</h2>
+        <span class="section-sub">A structure file or a 4-character PDB id.</span>
+      </div>
 
       <button type="button" id="dropzone" class="dropzone">
         <span class="dz-empty">
+          <svg class="px-icon big" data-icon="file" aria-hidden="true"></svg>
           <span class="dz-title">Drop a .pdb or .cif file</span>
           <span class="dz-sub">or click to choose one</span>
         </span>
@@ -34,19 +64,20 @@
       <label class="pdb-row">
         <span class="field-label inline">PDB id</span>
         <input type="text" id="pdb-id" name="pdb_id" class="input mono" maxlength="4"
-               placeholder="1A8O" autocomplete="off" spellcheck="false">
+               placeholder="4OBE" autocomplete="off" spellcheck="false">
       </label>
+      <div id="id-preview" aria-live="polite"></div>
 
       <details class="options">
         <summary>Options</summary>
         <div class="options-grid">
           <label class="field">
-            <span class="field-label">Start residue</span>
-            <input type="text" name="source" class="input mono" placeholder="auto: most connected" spellcheck="false">
+            <span class="field-label">Chains</span>
+            <input type="text" name="chains" id="chains" class="input mono" placeholder="all" spellcheck="false">
           </label>
           <label class="field">
-            <span class="field-label">Chains</span>
-            <input type="text" name="chains" class="input mono" placeholder="all" spellcheck="false">
+            <span class="field-label">Start residue</span>
+            <input type="text" name="source" class="input mono" placeholder="auto: most connected" spellcheck="false">
           </label>
           <div class="field">
             <span class="field-label">Site energy</span>
@@ -60,18 +91,18 @@
             <input type="number" name="scale" class="input mono" value="3" min="0" max="50" step="0.5">
           </label>
           <div class="field span2">
-            <span class="field-label">Allosteric labels</span>
-            <div class="segmented" role="radiogroup" aria-label="Allosteric labels">
-              <label><input type="radio" name="labels" value="auto" checked><span>ALLO lookup</span></label>
+            <span class="field-label">Active and allosteric sites</span>
+            <div class="segmented" role="radiogroup" aria-label="Active and allosteric sites">
+              <label><input type="radio" name="labels" value="auto" checked><span>look up</span></label>
               <label><input type="radio" name="labels" value="custom"><span>my residues</span></label>
               <label><input type="radio" name="labels" value="none"><span>none</span></label>
             </div>
-            <span class="field-help">Any PDB id works. ALLO lookup adds known sites for the 118 benchmark proteins (Wu et al. 2022); for others, give the active site under "my residues" to get candidate allosteric residues.</span>
+            <span class="field-help">"Look up" fills them in for the 118 proteins in the built-in allosteric benchmark set. For any other protein, give the active site under "my residues" and the walk starts there.</span>
           </div>
           <div class="custom-labels span2" id="custom-labels" hidden>
             <label class="field">
               <span class="field-label">Active-site residues</span>
-              <input type="text" name="active" class="input mono" placeholder="A:57, A:102" spellcheck="false">
+              <input type="text" name="active" class="input mono" placeholder="A:12, A:13, A:61" spellcheck="false">
             </label>
             <label class="field">
               <span class="field-label">Known allosteric residues (optional)</span>
@@ -82,39 +113,55 @@
             <input type="checkbox" name="control" value="1" id="control">
             <span class="switch" aria-hidden="true"></span>
             <span class="toggle-text">Compare against random site energies
-              <span class="toggle-sub">Null model over 5 random seeds, drawn as a band. Takes about 6 times longer.</span></span>
+              <span class="toggle-sub">Reruns the walk with 5 random energy sets and draws them as a band. About 6 times longer.</span></span>
           </label>
         </div>
       </details>
 
       <div class="actions">
-        <button type="submit" class="btn-primary" id="run-btn">Run</button>
-        <span class="hint">Runs the real pipeline locally: about 30 s for 170 residues, a few minutes for 500.</span>
+        <button type="submit" class="btn-primary" id="run-btn"><span>Run the walk</span></button>
+        <span class="hint">About 30 s for 170 residues on 4 cores, a few minutes for 500.</span>
       </div>
       <p class="error" id="error" role="alert" hidden></p>
     </form>
 
+    <section class="how" aria-label="How it works">
+      <div class="how-step">
+        <svg class="px-icon big" data-icon="helix" aria-hidden="true"></svg>
+        <div><div class="how-title">1 · Structure</div><div class="how-text">Every amino acid becomes a dot; two dots are linked when their β-carbons sit within 8 Å.</div></div>
+      </div>
+      <div class="how-step">
+        <svg class="px-icon big" data-icon="net" aria-hidden="true"></svg>
+        <div><div class="how-title">2 · Quantum walk</div><div class="how-text">A quantum walker starts at the active site (or the best-connected residue) and spreads through the network in superposition.</div></div>
+      </div>
+      <div class="how-step">
+        <svg class="px-icon big" data-icon="wave" aria-hidden="true"></svg>
+        <div><div class="how-title">3 · Add noise</div><div class="how-text">Dephasing is dialled from none to a lot. We watch where the signal lands at every level.</div></div>
+      </div>
+    </section>
+
     <section id="loading" class="card loading" hidden aria-live="polite">
       <div class="loading-head">
-        <span class="spinner" aria-hidden="true"></span>
+        <svg id="loading-mascot" class="mascot small" aria-hidden="true"></svg>
         <div>
-          <div class="loading-title">Running pipeline</div>
-          <div class="loading-sub">network, labels, noise sweep over 18 rates on all CPU cores</div>
+          <div class="loading-title">Walking the protein</div>
+          <div class="loading-sub">building the network, then 18 noise levels on all CPU cores</div>
         </div>
         <span class="elapsed mono" id="elapsed">00:00</span>
       </div>
-      <div class="shimmer-block">
-        <span class="shimmer w60"></span>
-        <span class="shimmer w90"></span>
-        <span class="shimmer tall"></span>
-      </div>
+      <div class="walker" id="walker" aria-hidden="true"></div>
+      <p class="fact" id="fact"></p>
     </section>
 
     <div id="results"></div>
 
-    <footer class="foot">Local only. Every number on this page comes from a pipeline run on the structure you submitted.</footer>
+    <footer class="foot">
+      <svg class="px-icon" data-icon="qubit" aria-hidden="true"></svg>
+      <span>QubitMan runs locally. Every number on this page comes from a walk on the structure you gave it.</span>
+    </footer>
   </main>
   <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+  <script src="/static/pixels.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

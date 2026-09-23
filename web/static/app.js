@@ -109,9 +109,10 @@ form.addEventListener("submit", async (e) => {
   else data.set("pdb_id", pdb);
 
   const btn = $("#run-btn");
-  btn.disabled = true; btn.textContent = "Running";
+  btn.disabled = true; btn.textContent = "Walking";
   $("#results").replaceChildren();
   $("#loading").hidden = false;
+  startLoadingFun();
   $("#loading").scrollIntoView({ behavior: "smooth", block: "center" });
   const t0 = Date.now();
   const tick = () => {
@@ -130,8 +131,9 @@ form.addEventListener("submit", async (e) => {
     showError("Could not reach the local server. Is web/app.py still running?");
   } finally {
     clearInterval(timer);
+    stopLoadingFun();
     $("#loading").hidden = true;
-    btn.disabled = false; btn.textContent = "Run";
+    btn.disabled = false; btn.textContent = "Run the walk";
   }
 });
 
@@ -230,12 +232,10 @@ function allostericCard(r) {
     miss.length || a.name_mismatch.length ? el("p", { class: "note", text:
       `${miss.length ? `Not in the network: ${miss.join(", ")}. ` : ""}${a.name_mismatch.length ? `Name mismatch: ${a.name_mismatch.join("; ")}.` : ""}` }) : null,
     el("div", { class: "btn-row" },
-      download(r.files.allosteric_png, "Figure for paper", "PNG 300 dpi", true),
+      download(r.files.allosteric_png, "Download figure", "PNG 300 dpi", true),
       download(r.files.allosteric_svg, "Figure", "SVG"),
       download(r.files.allosteric_csv, "Data", "CSV")),
-    dataTable(r.gammas, series, 3),
-    r.parameters.labels_used && r.parameters.labels_used.citation
-      ? el("p", { class: "cite", text: `Labels: ${r.parameters.labels_used.citation}` }) : null);
+    dataTable(r.gammas, series, 3));
 }
 
 function transportCard(r) {
@@ -256,7 +256,7 @@ function transportCard(r) {
     statsRow(st, "transport"),
     controlNote(t.control, st),
     el("div", { class: "btn-row" },
-      download(r.files.hump_png, "Figure for paper", "PNG 300 dpi", !r.allosteric),
+      download(r.files.hump_png, "Download figure", "PNG 300 dpi", !r.allosteric),
       download(r.files.hump_svg, "Figure", "SVG"),
       download(r.files.hump_csv, "Data", "CSV")),
     dataTable(r.gammas, series, 4));
@@ -518,9 +518,145 @@ function filesCard(r) {
       item(f.parameters, `${name}_parameters.json`, "Every setting used, the labels and a code version marker")),
     el("div", { class: "version", text: ver }),
     el("details", { class: "fold" }, el("summary", { text: "Show parameters" }),
-      el("pre", { class: "params", text: JSON.stringify(r.parameters, null, 2) })));
+      el("pre", { class: "params", text: JSON.stringify(r.parameters, (k, v) => (k === "citation" ? undefined : v), 2) })));
 }
 
 /* redraw the SVGs at the new width */
 let rs = null;
 window.addEventListener("resize", () => { clearTimeout(rs); rs = setTimeout(() => { hideTip(); redraw(); }, 120); });
+
+/* ======================================================================
+   QubitMan extras: pixel art, the dice, the id preview, the loading fun
+   ====================================================================== */
+PX.wordmark($("#wordmark"));
+PX.mascot($("#mascot"), { px: 5, speed: 1600 });
+const loadingMascot = PX.mascot($("#loading-mascot"), { px: 3, speed: 1600 });
+PX.icons();
+PX.background($("#bg"));
+const walkerBar = PX.walkerBar($("#walker"));
+
+/* ---------- loading: hopping walker + facts ---------- */
+const FACTS = [
+  "A quantum walker is spread over many residues at once, not hopping between them one at a time.",
+  "Dephasing noise scrambles the walker's phases. Too little and interference can trap it; too much and it freezes in place (the quantum Zeno effect).",
+  "Noise-assisted transport was first proposed to explain how energy moves efficiently through photosynthetic light-harvesting complexes.",
+  "Allosteric sites can sit far from the active site, yet a molecule binding there still changes what the protein does.",
+  "Each dot in the network is one amino acid; two are linked when their β-carbons are within 8 Å of each other.",
+  "The Protein Data Bank holds over 200,000 experimentally determined structures of proteins and nucleic acids.",
+  "With no noise, the walk is solved exactly by diagonalising the network's Hamiltonian; with noise, it is stepped through time.",
+  "Every noise level runs as its own job, so more CPU cores means a faster walk.",
+];
+let factTimer = null, factIdx = Math.floor(Math.random() * FACTS.length);
+function showFact() {
+  const f = $("#fact");
+  f.style.opacity = "0";
+  setTimeout(() => { f.textContent = FACTS[factIdx % FACTS.length]; factIdx += 1; f.style.opacity = "1"; }, 250);
+}
+function startLoadingFun() {
+  walkerBar.start(); loadingMascot.spin(260);
+  showFact(); clearInterval(factTimer); factTimer = setInterval(showFact, 6000);
+}
+function stopLoadingFun() { walkerBar.stop(); loadingMascot.spin(1600); clearInterval(factTimer); }
+
+/* ---------- protein info panel ---------- */
+function infoPanel(info, { compact = false, onRoll = null } = {}) {
+  const multi = info.chains.length > 1;
+  const top = el("div", { class: "info-top" },
+    el("span", { class: "info-id", text: info.id }),
+    info.classification ? el("span", { class: "pill-tag", text: info.classification }) : null,
+    info.year ? el("span", { class: "pill-tag", text: String(info.year) }) : null,
+    info.known_site ? el("span", { class: "pill-tag dark", text: "known allosteric site" }) : null);
+  const method = [info.method, info.resolution ? `${info.resolution.toFixed(2)} Å` : null].filter(Boolean).join(" · ");
+  const mols = info.molecules.map((m) => el("div", {}, el("span", { text: m.name }),
+    el("span", { class: "muted", text: `  ·  chain${m.chains.length > 1 ? "s" : ""} ${m.chains.join(", ")}  ·  ${m.residues} residues` })));
+  const card = el("div", { class: "info" + (compact ? " compact" : "") }, top,
+    info.title ? el("p", { class: "info-title", text: info.title }) : null);
+
+  if (compact) {
+    const bits = [info.organism, method, `${info.chains.length} protein chain${info.chains.length === 1 ? "" : "s"}`].filter(Boolean);
+    card.append(el("p", { class: "muted", style: "margin:8px 0 0;font-size:13px", text: bits.join("  ·  ") }));
+    if (info.known_site) {
+      card.append(el("p", { style: "margin:8px 0 0;font-size:13px", text:
+        `Known allosteric site (ligand ${info.known_site.ligand}): the walk starts at the active site and gets scored automatically.` }));
+    } else if (multi && info.suggested_chains) {
+      const btn = el("button", { type: "button", class: "linkish", text: `use chain ${info.suggested_chains} only` });
+      const msg = el("span", { class: "muted" });
+      btn.addEventListener("click", () => { $("#chains").value = info.suggested_chains; msg.textContent = `  ·  chains set to ${info.suggested_chains}`; });
+      card.append(el("p", { style: "margin:8px 0 0;font-size:13px" },
+        `This file holds ${info.chains.length} chains. Tip: `, btn, msg));
+    }
+    return card;
+  }
+
+  const grid = el("dl", { class: "info-grid" },
+    info.organism ? [el("dt", { text: "Organism" }), el("dd", { text: info.organism })] : null,
+    method ? [el("dt", { text: "Method" }), el("dd", { text: method })] : null,
+    [el("dt", { text: "Protein" }), el("dd", {}, mols)],
+    info.ligands.length ? [el("dt", { text: "Ligands" }), el("dd", {},
+      info.ligands.map((l) => el("span", { class: "lig", title: l.name || l.id, text: l.id })))] : null,
+    info.known_site ? [el("dt", { text: "Known site" }), el("dd", {
+      text: `${info.known_site.n_allosteric} allosteric residues around ligand ${info.known_site.ligand}. The walk will start at the active site and be scored against them.` })] : null);
+  card.append(grid);
+
+  const run = el("button", { type: "button", class: "btn-primary small", text: "Run this one" });
+  run.addEventListener("click", () => {
+    setFile(null);
+    pdbInput.value = info.id;
+    $("#chains").value = info.known_site ? "" : (info.suggested_chains || "");
+    form.querySelector('input[name="labels"][value="auto"]').checked = true;
+    $("#custom-labels").hidden = true;
+    showPreview(info);
+    form.requestSubmit();
+  });
+  const est = info.estimate_s ? `roughly ${info.estimate_s < 90 ? info.estimate_s + " s" : Math.round(info.estimate_s / 60) + " min"} on 4 cores` : "";
+  const chainNote = !info.known_site && multi && info.suggested_chains ? `chain ${info.suggested_chains} (${info.run_residues} residues)` : `${info.run_residues} residues`;
+  card.append(el("div", { class: "info-actions" }, run,
+    onRoll ? (() => { const b = el("button", { type: "button", class: "linkish", text: "roll again" }); b.addEventListener("click", onRoll); return b; })() : null,
+    el("span", { class: "muted", style: "font-size:13px", text: [chainNote, est].filter(Boolean).join("  ·  ") })));
+  return card;
+}
+
+/* ---------- the dice ---------- */
+async function roll(kind, button) {
+  const host = $("#dice-result");
+  document.querySelectorAll(".btn-roll").forEach((b) => { b.disabled = true; });
+  button.classList.add("rolling", "pressed");
+  host.replaceChildren(el("div", { class: "info" },
+    el("span", { class: "skeleton-line", style: "width:30%" }), el("span", { class: "skeleton-line", style: "width:85%" }),
+    el("span", { class: "skeleton-line", style: "width:60%" })));
+  try {
+    const res = await fetch(`/api/random${kind === "allosteric" ? "?kind=allosteric" : ""}`);
+    const info = await res.json();
+    if (!res.ok || info.error) throw new Error(info.error || "The dice fell off the table. Roll again.");
+    host.replaceChildren(infoPanel(info, { onRoll: () => roll(kind, button) }));
+  } catch (err) {
+    host.replaceChildren(el("p", { class: "error", text: err.message || "Could not reach the server." }));
+  } finally {
+    document.querySelectorAll(".btn-roll").forEach((b) => { b.disabled = false; });
+    button.classList.remove("rolling", "pressed");
+  }
+}
+document.querySelectorAll(".btn-roll").forEach((b) => b.addEventListener("click", () => roll(b.dataset.kind, b)));
+
+/* ---------- live preview while typing an id ---------- */
+let previewToken = 0, previewTimer = null;
+function showPreview(info) { $("#id-preview").replaceChildren(infoPanel(info, { compact: true })); }
+pdbInput.addEventListener("input", () => {
+  clearTimeout(previewTimer);
+  const id = pdbInput.value;
+  const token = ++previewToken;
+  if (!/^[0-9][A-Z0-9]{3}$/.test(id)) { $("#id-preview").replaceChildren(); return; }
+  previewTimer = setTimeout(async () => {
+    $("#id-preview").replaceChildren(el("div", { class: "info compact" },
+      el("span", { class: "skeleton-line", style: "width:40%;margin-top:0" }), el("span", { class: "skeleton-line", style: "width:75%" })));
+    try {
+      const res = await fetch(`/api/info/${id}`);
+      const info = await res.json();
+      if (token !== previewToken) return;
+      if (!res.ok || info.error) { $("#id-preview").replaceChildren(el("p", { class: "muted", style: "margin:10px 0 0;font-size:13px", text: info.error })); return; }
+      showPreview(info);
+    } catch {
+      if (token === previewToken) $("#id-preview").replaceChildren();
+    }
+  }, 350);
+});

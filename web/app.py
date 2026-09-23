@@ -122,6 +122,141 @@ def api_run():
                                  "The terminal running web/app.py has the details."}), 500
 
 
+# ---------------------------------------------------------------- PDB entry info + random picks
+_INFO_CACHE = {}
+_ID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+
+def _first(d, *keys):
+    """First non-empty value among mmCIF keys (lists give their first element)."""
+    for k in keys:
+        v = d.get(k)
+        if isinstance(v, list):
+            v = next((x for x in v if x not in ("?", ".", "")), None)
+        if v not in (None, "?", ".", ""):
+            return v
+    return None
+
+
+def _as_list(v):
+    return v if isinstance(v, list) else ([] if v is None else [v])
+
+
+def _nice(text):
+    """'CRYSTAL STRUCTURE OF GDP-BOUND HUMAN KRAS' -> 'Crystal structure of GDP-bound human KRAS'."""
+    if not text:
+        return text
+    text = " ".join(str(text).split())
+    if text.upper() != text:
+        return text
+    words = []
+    for w in text.split(" "):
+        keep = any(ch.isdigit() for ch in w) or (len(w) <= 4 and w.isalpha() and w not in (
+            "OF", "THE", "AND", "IN", "WITH", "FROM", "TO", "BY", "FOR", "ON", "AT", "AN", "A", "AS", "ITS"))
+        words.append(w if keep else w.lower())
+    out = " ".join(words)
+    return out[:1].upper() + out[1:]
+
+
+def pdb_info(pdb_id):
+    """Small summary of a PDB entry from its RCSB mmCIF header (no coordinates)."""
+    pdb_id = pdb_id.upper()
+    if pdb_id in _INFO_CACHE:
+        return _INFO_CACHE[pdb_id]
+    import io, urllib.error, urllib.request
+    from Bio.PDB.MMCIF2Dict import MMCIF2Dict
+    try:
+        with urllib.request.urlopen(f"https://files.rcsb.org/header/{pdb_id}.cif", timeout=10) as r:
+            text = r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        raise
+    d = MMCIF2Dict(io.StringIO(text))
+    ent_ids = _as_list(d.get("_entity.id"))
+    ent_desc = dict(zip(ent_ids, _as_list(d.get("_entity.pdbx_description"))))
+    chains, molecules = [], []
+    for eid, ptype, strands, seq in zip(_as_list(d.get("_entity_poly.entity_id")), _as_list(d.get("_entity_poly.type")),
+                                        _as_list(d.get("_entity_poly.pdbx_strand_id")),
+                                        _as_list(d.get("_entity_poly.pdbx_seq_one_letter_code_can"))):
+        if "polypeptide" not in ptype:
+            continue
+        n = len("".join(str(seq).split()))
+        ids = [c.strip() for c in str(strands).split(",") if c.strip()]
+        chains += [{"chain": c, "residues": n} for c in ids]
+        name = _nice(ent_desc.get(eid)) or "protein"
+        molecules.append({"name": name, "chains": ids, "residues": n})
+    ligands = sorted({c for c in _as_list(d.get("_pdbx_entity_nonpoly.comp_id")) if c not in ("HOH", "DOD")})
+    lig_names = dict(zip(_as_list(d.get("_pdbx_entity_nonpoly.comp_id")), _as_list(d.get("_pdbx_entity_nonpoly.name"))))
+    res = _first(d, "_refine.ls_d_res_high", "_reflns.d_resolution_high", "_em_3d_reconstruction.resolution")
+    date = _first(d, "_pdbx_database_status.recvd_initial_deposition_date")
+    info = {
+        "id": pdb_id,
+        "title": _nice(_first(d, "_struct.title")),
+        "classification": _nice(_first(d, "_struct_keywords.pdbx_keywords")),
+        "organism": _nice(_first(d, "_entity_src_gen.pdbx_gene_src_scientific_name",
+                                 "_entity_src_nat.pdbx_organism_scientific", "_pdbx_entity_src_syn.organism_scientific")),
+        "method": _nice(_first(d, "_exptl.method")),
+        "resolution": float(res) if res else None,
+        "year": int(date[:4]) if date and date[:4].isdigit() else None,
+        "chains": chains, "molecules": molecules,
+        "ligands": [{"id": c, "name": _nice(lig_names.get(c))} for c in ligands][:8],
+    }
+    known = [r for r in rp.lb.load_table() if r["pdb"].upper() == pdb_id]
+    info["known_site"] = ({"entries": [r["entry"] for r in known], "protein": known[0]["protein"],
+                           "ligand": known[0]["allosteric_ligand"].split()[0],
+                           "n_allosteric": len(known[0]["allosteric_site"].split()),
+                           "chains": sorted({t.split(":")[0] for t in (known[0]["active_site"] + " "
+                                                                         + known[0]["allosteric_site"]).split()})}
+                          if known else None)
+    # suggest one protein chain: crystal files often hold several copies
+    if info["known_site"]:
+        info["suggested_chains"] = ",".join(info["known_site"]["chains"])
+        n = sum(c["residues"] for c in chains if c["chain"] in info["known_site"]["chains"])
+    else:
+        first = chains[0] if chains else None
+        info["suggested_chains"] = first["chain"] if first and len(chains) > 1 else ""
+        n = first["residues"] if first and len(chains) > 1 else sum(c["residues"] for c in chains)
+    info["run_residues"] = n
+    # measured: 169 residues ~26 s on 4 cores; cost grows ~ with the square of the size
+    info["estimate_s"] = int(round(max(5, 26 * (n / 169) ** 2))) if n else None
+    _INFO_CACHE[pdb_id] = info
+    return info
+
+
+@app.get("/api/info/<pdb_id>")
+def api_info(pdb_id):
+    if not re.fullmatch(r"[0-9][A-Za-z0-9]{3}", pdb_id):
+        return jsonify({"error": "A PDB id is 4 characters starting with a digit."}), 400
+    try:
+        info = pdb_info(pdb_id)
+    except Exception:
+        return jsonify({"error": "Could not reach the Protein Data Bank. Check your internet connection."}), 502
+    if info is None:
+        return jsonify({"error": f"{pdb_id.upper()} is not a PDB entry."}), 404
+    return jsonify(info)
+
+
+@app.get("/api/random")
+def api_random():
+    import random
+    rng = random.SystemRandom()
+    known = request.args.get("kind") == "allosteric"
+    table = rp.lb.load_table()
+    for _ in range(15):
+        pid = (rng.choice(table)["pdb"] if known else
+               rng.choice("123456789") + "".join(rng.choice(_ID_CHARS) for _ in range(3)))
+        try:
+            info = pdb_info(pid)
+        except Exception:
+            return jsonify({"error": "Could not reach the Protein Data Bank. Check your internet connection."}), 502
+        if info is None or not info["chains"]:
+            continue                                   # not an entry, or no protein in it
+        if known or 40 <= info["run_residues"] <= 350:
+            return jsonify(info)
+    return jsonify({"error": "No luck this time. Roll again."}), 503
+
+
 @app.errorhandler(413)
 def too_large(_e):
     return jsonify({"error": "That file is larger than 64 MB."}), 413
@@ -142,5 +277,5 @@ def index():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8000"))
     os.makedirs(RUNS, exist_ok=True)
-    print(f"\n  Protein walk  ->  http://127.0.0.1:{port}\n")
+    print(f"\n  QubitMan  ->  http://127.0.0.1:{port}\n")
     app.run(host="127.0.0.1", port=port, debug=False, threaded=True)
