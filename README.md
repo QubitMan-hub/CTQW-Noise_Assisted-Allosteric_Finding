@@ -104,7 +104,6 @@ Outputs land in `output/`:
     --active A:57,A:102     your active site (the walk starts here)
     --allosteric A:196      known allosteric residues (adds the AUC test)
     --site 2                which ALLO entry when a PDB has several (e.g. 1CE8_2)
-    --control-seeds 20      more random-energy seeds for final figures (default 5)
     --no-control            skip the null model (about 4 times faster; --control-seeds 5)
     --site-energy random    random energies for the main run
     --scale 3               site-energy disorder strength
