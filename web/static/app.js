@@ -170,6 +170,7 @@ function verdictText(stats, what) {
 }
 
 /* ---------- plain-language help ---------- */
+function fmtP(p) { return p == null ? "–" : p < 0.001 ? "< 0.001" : p.toFixed(p < 0.01 ? 3 : 2); }
 function guide(items) {
   return el("details", { class: "fold guide" }, el("summary", { text: "How to read this" }),
     el("ul", { class: "guide-list" }, items.map(([lead, rest]) => el("li", {}, el("strong", { text: lead }), " " + rest))));
@@ -181,9 +182,11 @@ function takeaways(r) {
   const mark = (kind) => el("span", { class: "tk-mark " + kind, text: kind === "yes" ? "yes" : kind === "no" ? "no" : "partly" });
   const line = (kind, q, a2) => out.push(el("li", {}, mark(kind), el("div", {}, el("div", { class: "tk-q", text: q }), el("div", { class: "tk-a", text: a2 }))));
   if (a && a.adjusted) {
-    const d = a.adjusted, st = d.stats, best = st.peak_value;
-    line(best >= 0.6 ? "yes" : best > 0.55 ? "partly" : "no", "Does the walk point at the known allosteric site?",
-      best >= 0.6 ? `Yes. Among residues equally far from the active site, it ranks the allosteric ones higher (best ${fmt(best)}, where 0.5 is what closeness alone gives).`
+    const d = a.adjusted, st = d.stats, best = st.peak_value, sig = d.significance, pv = sig ? sig.p_value : null;
+    const signif = pv !== null && pv < 0.05;
+    line(best >= 0.6 && (pv === null || signif) ? "yes" : best > 0.55 ? "partly" : "no", "Does the walk point at the known allosteric site?",
+      best >= 0.6 && pv !== null && !signif ? `Possibly. It scores ${fmt(best)} beyond plain closeness (0.5), but with ${a.n_allosteric} known allosteric residues that could still be luck (p = ${fmtP(pv)}).`
+      : best >= 0.6 ? `Yes. Among residues equally far from the active site, it ranks the allosteric ones higher (best ${fmt(best)}, where 0.5 is what closeness alone gives${pv !== null ? `; p = ${fmtP(pv)}` : ""}).`
       : best > 0.55 ? `Only a little. Beyond plain closeness it scores ${fmt(best)} (0.5 is closeness alone).`
       : `No. Once distance from the active site is taken out it scores ${fmt(best)}, about chance. Whatever the raw score shows here is just closeness.`);
     if (d.control) {
@@ -193,6 +196,15 @@ function takeaways(r) {
         : beat === seeds.length ? `Yes. Its best beats the best of all ${seeds.length} random-energy runs, so the hydropathy pattern matters.`
         : beat > 0 ? `Partly. It beats ${beat} of ${seeds.length} random-energy runs, so much of it comes from the contact network itself.`
         : `No. Random energies do as well, so the contact network alone explains it.`);
+    }
+    const cl = a.classical;
+    if (cl) {
+      const cb = Math.max(...cl.auc_adjusted.filter((x) => x !== null)), diff = best - cb;
+      line(diff >= 0.02 && best > 0.55 ? "yes" : diff > -0.02 && best > 0.55 ? "partly" : "no", "Does it need to be quantum?",
+        best <= 0.55 ? `Nothing to explain here. A classical random walk scores ${fmt(cb)}.`
+        : diff >= 0.02 ? `It helps. The quantum walk's ${fmt(best)} beats the best classical random walk on the same contacts (${fmt(cb)}, over ${cl.rates.length} hopping speeds).`
+        : diff > -0.02 ? `Not clearly. A classical random walk on the same contacts does about as well (${fmt(cb)}).`
+        : `No. A classical random walk on the same contacts does better (${fmt(cb)}).`);
     }
     const helps = st.verdict === "hump" && st.gain_abs >= 0.01 && best > 0.55;
     line(helps ? "yes" : "no", "Does a little noise help find it?",
@@ -229,7 +241,8 @@ function summaryCard(r) {
     el("div", { class: "stats" },
       stat("Residues", fmtInt(s.residues), "Amino acids in the network (one node each)"),
       stat("Contacts", fmtInt(s.contacts), "Residue pairs closer than 8 Å; the walker hops along these"),
-      a ? stat("Best AUC", fmt(a.stats.peak_value), "How well the raw signal ranks the known allosteric residues: 0.5 is a coin flip, 1 is perfect")
+      a && a.adjusted && a.adjusted.significance ? stat("p-value", fmtP(a.adjusted.significance.p_value), "Chance of scoring this well by luck: the allosteric labels were shuffled within each distance group 10,000 times. Below 0.05 is the usual bar.")
+        : a ? stat("Best AUC", fmt(a.stats.peak_value), "How well the raw signal ranks the known allosteric residues: 0.5 is a coin flip, 1 is perfect")
         : stat("Transport peak γ", fmtGamma(t.peak_gamma), "The noise level at which most signal reaches the far side"),
       a && a.adjusted ? stat("Best AUC, same distance", fmt(a.adjusted.stats.peak_value), "The same, but only comparing residues equally far from the active site: 0.5 means closeness explains everything")
         : stat("Gain over ends", t.verdict === "hump" ? pct(t.gain_rel) : "none", "How much better the best noise level is than both no noise and heavy noise")),
@@ -303,7 +316,7 @@ function allostericCard(r) {
     title: "Allosteric recovery versus noise",
     guide: [
       ["The solid line:", "for each noise level, how well the signal a residue receives picks out the known allosteric residues. 0.5 is a coin flip, 1.0 would put every allosteric residue first."],
-      ["The dotted lines:", "simple guesses to beat. \u2018Proximity\u2019 ranks residues by how few contacts they are from the active site; \u2018degree\u2019 by how many contacts they have."],
+      ["The dotted lines:", "simple guesses to beat. \u2018Proximity\u2019 ranks residues by how few contacts they are from the active site; \u2018degree\u2019 by how many contacts they have; the classical walk is an ordinary random walk on the same contacts."],
       ["The grey band:", "the same test with random site energies (mean \u00b1 sd over 5 runs). A solid line inside the band is not about this protein's chemistry."],
       ["Careful:", "signal fades with distance, so this raw score mostly measures closeness. The \u2018Beyond distance\u2019 chart is the fairer test."],
     ],
@@ -316,11 +329,15 @@ function adjustedCard(r) {
   const d = r.allosteric.adjusted;
   return aucCard(r, d, { id: "chart-adj", tag: "adjusted", yLabel: "ROC AUC, same distance",
     title: "Beyond distance",
+    extra: d.significance ? el("p", { class: "note" }, "Significance: ", el("strong", { text: `p = ${fmtP(d.significance.p_value)}` }),
+      `. The allosteric labels were shuffled within each distance group ${d.significance.n_perm.toLocaleString()} times, and each time the best score over all noise levels was taken, so picking the best γ is accounted for (shuffles reach ${fmt(d.significance.null_95)} one time in twenty). Classical random walk: best ${fmt(r.allosteric.classical.significance_adjusted.observed_best)}, p = ${fmtP(r.allosteric.classical.significance_adjusted.p_value)}.`) : null,
     guide: [
       ["The idea:", "residues are grouped by how many contacts they are from the active site, and each is only ranked against its own group. Being close no longer helps."],
       ["0.5 line:", "what closeness alone scores here. Above it, the walk sees something extra about where the allosteric site is; below it, the walk points away from it."],
       ["Grey band:", "random site energies. Solid line above the band means the protein's hydropathy pattern is doing the work, not just the shape of the network."],
       ["A hump:", "a peak between the two ends means a moderate amount of noise helps the walk find the site. Flat or highest at an end means it does not."],
+      ["Classical walk line:", "an ordinary random walk on the same contacts, at its best hopping speed. Beating it is the case that the quantum part matters."],
+      ["p-value:", "how often shuffled labels score as well. With only a handful of allosteric residues, even 0.7 can happen by luck, so check it."],
     ],
     sub: `The same test, but each residue is only compared with residues equally far from the active site (${d.shells} distance shells). Plain closeness scores 0.5 here, so anything above it is what the walk adds.` });
 }
@@ -410,11 +427,16 @@ function drawChart(c) {
   svg("text", { x: 12, y: m.t + ih / 2, "text-anchor": "middle", "font-size": 11.5, fill: C("--ink-2"),
     transform: `rotate(-90 12 ${m.t + ih / 2})`, text: c.yLabel }, root);
   if (c.chance !== null) svg("line", { x1: m.l, x2: W - m.r, y1: Y(c.chance), y2: Y(c.chance), stroke: C("--line-2"), "stroke-width": 1 }, root);
-  for (const b of c.baselines) {
+  const short = { "proximity to active site": "proximity", "contact degree": "degree", "classical walk, best rate": "classical walk",
+    "contact degree, same distance": "degree, same distance" };
+  let lastY = -Infinity;                  // top to bottom, nudging labels apart so close baselines stay readable
+  for (const b of [...c.baselines].sort((p, q) => q.value - p.value)) {
     svg("line", { x1: m.l, x2: W - m.r, y1: Y(b.value), y2: Y(b.value), stroke: C("--ctrl"), "stroke-width": 1, "stroke-dasharray": "1.5 3" }, root);
-    svg("text", { x: W - m.r - 4, y: Y(b.value) - 5, "text-anchor": "end", "font-size": 10.5, fill: C("--muted"),
+    const ly = Math.max(Y(b.value) - 5, lastY + 13);
+    lastY = ly;
+    svg("text", { x: W - m.r - 4, y: ly, "text-anchor": "end", "font-size": 10.5, fill: C("--muted"),
       "paint-order": "stroke", stroke: C("--card"), "stroke-width": 3,
-      text: `${{ "proximity to active site": "proximity", "contact degree": "degree" }[b.label] || b.label} ${fmt(b.value)}` }, root);
+      text: `${short[b.label] || b.label} ${fmt(b.value)}` }, root);
   }
   const pg = c.peakGamma;
   svg("line", { x1: X(pg), x2: X(pg), y1: m.t - 6, y2: m.t + ih, stroke: C("--faint"), "stroke-width": 1, "stroke-dasharray": "3 3" }, root);

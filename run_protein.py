@@ -41,10 +41,13 @@ DEFAULTS = dict(
     source=None, chains=None, model=0, method="cb", cutoff=None, min_seq_sep=0, weighted=False,
     site_energy="hydropathy", scale=3.0, seed=0, gammas=list(wc.DEFAULT_GAMMAS),
     tmax=30.0, ntime=200, distal_fraction=0.5,
-    control=True, control_seeds=5,
+    control=True, control_seeds=5, permutations=10000,
     labels="auto", active=None, allosteric=None, site=None,
     workers=None,
 )
+
+CLASSICAL_RATES = [float(f"{k:.4g}") for k in np.logspace(-2, 2, 17)]   # classical hopping rates tried
+
 
 class InputError(Exception):
     """A problem with the input, reported as a short message (no traceback)."""
@@ -107,7 +110,6 @@ def save_figure(base, gammas, main, main_label, ylabel, control=None, control_la
         lo.append(float(np.nanmin(m - s)))
     for value, label in baselines:
         ax.axhline(value, color="#6b6b6b", lw=1, ls=(0, (1, 2)), zorder=1)
-        ax.text(g[-1], value, f" {label}", va="center", ha="left", fontsize=10, color="#3a3a3a")
     if chance is not None:
         ax.axhline(chance, color="#bdbdbd", lw=0.8, zorder=0)
     if peak_gamma is not None:
@@ -117,6 +119,12 @@ def save_figure(base, gammas, main, main_label, ylabel, control=None, control_la
                                           if control is not None else 0] + [v for v, _ in baselines])
     bottom = 0.0 if chance is None else min(chance, min(lo), min([v for v, _ in baselines] or [1])) - 0.05
     ax.set_ylim(max(0.0, bottom), top * 1.08 if chance is None else min(1.0, top + 0.05))
+    y0, y1 = ax.get_ylim()
+    last = None                                   # labels right of the plot, nudged apart when lines are close
+    for value, label in sorted(baselines, reverse=True):
+        y = value if last is None else min(value, last - 0.055 * (y1 - y0))
+        ax.text(g[-1], y, f" {label}", va="center", ha="left", fontsize=10, color="#3a3a3a")
+        last = y
     ticks = [t for t in (0, 0.1, 1, 10, 100) if t <= g[-1] * 1.05]
     ax.xaxis.set_major_locator(FixedLocator(ticks))
     ax.xaxis.set_minor_locator(NullLocator())
@@ -306,6 +314,20 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         baselines = {"contact degree": wc.roc_auc(deg[el], pos[el]),
                      "proximity to active site": wc.roc_auc(prox[el], pos[el])}
         adj_baselines = {"contact degree, same distance": adj_auc(deg)}
+        # classical baseline: a random walk on the same contacts from the same start,
+        # over a wide range of hopping rates; its best rate is the number to beat
+        C = wc.classical_scores(A, walk_src, CLASSICAL_RATES, o["tmax"])
+        c_raw = np.array([wc.roc_auc(c[el], pos[el]) for c in C])
+        c_adj = np.array([adj_auc(c) for c in C])
+        baselines["classical walk, best rate"] = float(np.nanmax(c_raw))
+        adj_baselines["classical walk, best rate"] = float(np.nanmax(c_adj))
+        # significance: shuffle the allosteric labels within each distance shell
+        sig = wc.shell_permutation_test(S, shells, pos & el & (dist >= 0), n_perm=o["permutations"], seed=o["seed"])
+        c_sig = wc.shell_permutation_test(C, shells, pos & el & (dist >= 0), n_perm=o["permutations"], seed=o["seed"])
+        classical = {"rates": list(CLASSICAL_RATES), "auc": c_raw.tolist(), "auc_adjusted": c_adj.tolist(),
+                     "best_rate_raw": float(CLASSICAL_RATES[int(np.nanargmax(c_raw))]),
+                     "best_rate_adjusted": float(CLASSICAL_RATES[int(np.nanargmax(c_adj))]),
+                     "significance_adjusted": c_sig}
         a_ctrl = adj_ctrl = None
         if control_keys:
             curves = [np.array([wc.roc_auc(s[el], pos[el]) for s in block("walk", k)]) for k in control_keys]
@@ -320,7 +342,8 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         rep = allo["rep"]
         a_res = {"auc": auc.tolist(), "stats": a_stats, "baselines": baselines, "control": a_ctrl,
                  "adjusted": {"auc": auc_adj.tolist(), "stats": adj_stats, "baselines": adj_baselines,
-                              "control": adj_ctrl, "shells": len(shells)},
+                              "control": adj_ctrl, "shells": len(shells), "significance": sig},
+                 "classical": classical,
                  "n_active": len(rep["active"]), "n_allosteric": int(pos.sum()),
                  "n_candidates": int(el.sum()),
                  "active": [nodes[i] for i in rep["active"]], "allosteric": [nodes[i] for i in np.where(pos)[0]],
@@ -459,7 +482,8 @@ def main():
     ap.add_argument("--control", action=argparse.BooleanOptionalAction, default=True,
                     help="Random site energies (null model) over several seeds; on by default, --no-control "
                          "skips it (about 4 times faster, but a hump without it is not evidence).")
-    ap.add_argument("--control-seeds", type=int, default=5)
+    ap.add_argument("--control-seeds", type=int, default=5, help="Random-energy seeds for the control (20 for final figures).")
+    ap.add_argument("--permutations", type=int, default=10000, help="Label shuffles for the p-value.")
     ap.add_argument("--labels", choices=["auto", "none"], default="auto", help="auto: ALLO table by PDB id; none: skip.")
     ap.add_argument("--active", default=None, help="Active-site residues, e.g. A:57,A:102 (the walk starts here).")
     ap.add_argument("--allosteric", default=None, help="Known allosteric residues, e.g. A:196,A:203 (adds the AUC test).")
@@ -472,7 +496,7 @@ def main():
     prefix = a.prefix or (os.path.splitext(os.path.basename(a.input))[0] or "protein")
     opts = dict(source=a.source, chains=a.chains, model=a.model, method=a.method, cutoff=a.cutoff,
                 min_seq_sep=a.min_seq_sep, weighted=a.weighted, site_energy=a.site_energy, scale=a.scale,
-                seed=a.seed, tmax=a.tmax, ntime=a.ntime, control=a.control, control_seeds=a.control_seeds,
+                seed=a.seed, tmax=a.tmax, ntime=a.ntime, control=a.control, control_seeds=a.control_seeds, permutations=a.permutations,
                 labels=a.labels, active=a.active, allosteric=a.allosteric, site=a.site, workers=a.workers)
     if a.gammas:
         opts["gammas"] = [float(x) for x in a.gammas.split(",")]
@@ -504,6 +528,10 @@ def main():
               + ", ".join(f"{k} {v:.3f}" for k, v in ad["baselines"].items())
               + (f"; control best {max(ad['control']['best_seeds']):.3f} over {len(ad['control']['best_seeds'])} seeds"
                  if ad["control"] else ""))
+        sg, cs = ad["significance"], al["classical"]["significance_adjusted"]
+        if sg:
+            print(f"  significance (labels shuffled within distance shells, best over all gammas): "
+                  f"p = {sg['p_value']:.4f}; classical walk best {cs['observed_best']:.3f}, p = {cs['p_value']:.4f}")
     for n in r["notes"]:
         print(f"  [note] {n}")
     print(f"\nDone in {r['elapsed_s']} s. Outputs in {a.outdir}/")

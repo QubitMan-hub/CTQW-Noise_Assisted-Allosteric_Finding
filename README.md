@@ -70,6 +70,15 @@ Outputs land in `output/`:
   site (distances merged until every shell holds at least 5 residues), and the
   AUC is recomputed. Plain proximity scores exactly 0.5 here; anything above it
   is what the walk adds. Its baseline is contact degree, adjusted the same way.
+- **Classical baseline:** an ordinary continuous-time random walk on the same
+  contacts from the same start (dp/dt = -kLp, L the graph Laplacian), solved
+  exactly for 17 hopping rates k from 0.01 to 100; its best rate is drawn as a
+  baseline on both allosteric charts. Beating it is the evidence that the
+  quantum part matters. It costs about a second.
+- **Significance:** the allosteric labels are shuffled within each distance shell
+  10,000 times (`--permutations`), and each shuffle takes its best score over all
+  noise levels, so p accounts for picking the best gamma. The same test is run
+  for the classical walk. No extra walks are needed.
 - **Null model (on by default, `--no-control` skips it):** the same analysis with random site energies over
   5 seeds, drawn as a mean ± sd band, plus how the real hump's gain ranks among
   the seeds. A hump that random energies reproduce is not specific to the
@@ -95,11 +104,21 @@ Outputs land in `output/`:
     --active A:57,A:102     your active site (the walk starts here)
     --allosteric A:196      known allosteric residues (adds the AUC test)
     --site 2                which ALLO entry when a PDB has several (e.g. 1CE8_2)
+    --control-seeds 20      more random-energy seeds for final figures (default 5)
     --no-control            skip the null model (about 4 times faster; --control-seeds 5)
     --site-energy random    random energies for the main run
     --scale 3               site-energy disorder strength
     --gammas 0,0.1,1,10     your own noise grid (must start at 0)
     --workers 4             parallel processes (default: CPU cores, max 8)
+
+## Robustness check
+
+    python sensitivity.py 1T49                  # contact cutoff 7,8,9 x energy scale 1,3,5
+    python sensitivity.py 1T49 --control        # the same with the control (4x slower)
+
+Reruns the protein over the grid and writes a table (CSV and Markdown) of the
+distance-adjusted AUC, best gamma, whether noise helps, the p-value and the
+classical baseline for every setting.
 
 ## Speed and exactness
 

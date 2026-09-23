@@ -342,6 +342,62 @@ def shell_percentile(scores, shells, n):
     return out
 
 
+def classical_scores(A, source_idx, rates, tmax):
+    """Classical baseline: a continuous-time random walk on the same contacts,
+    dp/dt = -k L p with L = D - A, started from the same (mixed) sources. Returns
+    the time-integrated occupation up to tmax for each hopping rate k, exactly,
+    from one eigendecomposition of L (so every rate costs almost nothing).
+    Site energies do not enter: a classical walker has no phases to shift."""
+    A = A.toarray() if sparse.issparse(A) else np.asarray(A, dtype=float)
+    L = np.diag(A.sum(axis=1)) - A
+    w, V = np.linalg.eigh(L)
+    w = np.clip(w, 0.0, None)
+    src = [source_idx] if np.isscalar(source_idx) else list(source_idx)
+    p0 = np.zeros(len(A))
+    p0[src] = 1.0 / len(src)
+    c = V.T @ p0
+    out = []
+    for k in rates:
+        x = k * w * tmax
+        f = np.where(x > 1e-12, -np.expm1(-x) / np.where(w > 0, k * w, 1.0), tmax)
+        out.append(V @ (c * f))
+    return np.array(out)
+
+
+def shell_permutation_test(score_rows, shells, positive, n_perm=10000, seed=0):
+    """Significance of the distance-adjusted AUC. The known allosteric labels are
+    shuffled within each distance shell (so every shuffle keeps the same number
+    of allosteric residues at each distance), and the best AUC over all rows
+    (noise levels, or classical rates) is recomputed each time. Taking the best
+    over rows in the null too makes p honest about having picked the best gamma."""
+    idx = np.concatenate(shells)
+    n = int(np.max(idx)) + 1 if len(idx) else 0
+    pos = np.asarray(positive, dtype=bool)
+    n_pos = int(pos[idx].sum())
+    n_neg = len(idx) - n_pos
+    if n_pos == 0 or n_neg == 0:
+        return None
+    from scipy.stats import rankdata
+    N = max(n, len(pos))
+    R = np.array([rankdata(shell_percentile(row, shells, N)[idx]) for row in score_rows], dtype=np.float32)
+    offset = n_pos * (n_pos + 1) / 2.0
+    observed = (R[:, pos[idx]].sum(axis=1) - offset) / (n_pos * n_neg)
+    rng = np.random.default_rng(seed)
+    P = np.zeros((len(idx), n_perm), dtype=np.float32)
+    start = 0
+    for g in shells:
+        m, k = len(g), int(pos[g].sum())
+        if k:
+            pick = np.argsort(rng.random((n_perm, m)), axis=1)[:, :k]
+            P[start + pick, np.arange(n_perm)[:, None]] = 1.0
+        start += m
+    null_best = ((R @ P - offset) / (n_pos * n_neg)).max(axis=0)
+    best = float(np.nanmax(observed))
+    return {"observed_best": best, "p_value": float((1 + np.sum(null_best >= best - 1e-9)) / (n_perm + 1)),
+            "null_mean": float(null_best.mean()), "null_95": float(np.quantile(null_best, 0.95)),
+            "n_perm": int(n_perm)}
+
+
 def hump_stats(gammas, values):
     """Peak, verdict and effect size of a curve over the gamma grid.
     baseline = the better of the two ends (fully quantum, most dephased);

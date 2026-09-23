@@ -98,6 +98,36 @@ def test_distance_adjusted_score():
     assert pct[1] == pct[4] and pct[1] > pct[2] > pct[3]
 
 
+def test_classical_scores_match_brute_force():
+    from scipy.linalg import expm
+    A, _ = protein_like()
+    A = np.asarray(A, dtype=float)
+    L = np.diag(A.sum(axis=1)) - A
+    tl = np.linspace(0, 5.0, 2001)
+    for k in (0.1, 2.0):
+        p0 = np.zeros(len(A)); p0[[0, 3]] = 0.5
+        traj = np.array([expm(-k * L * t) @ p0 for t in tl]).T
+        brute = np.trapezoid(traj, tl, axis=1) if hasattr(np, "trapezoid") else np.trapz(traj, tl, axis=1)
+        exact = wc.classical_scores(A, [0, 3], [k], 5.0)[0]
+        assert np.max(np.abs(exact - brute)) < 1e-5
+
+
+def test_permutation_test_observed_matches_auc():
+    rng = np.random.default_rng(3)
+    n = 40
+    dist = np.repeat([0, 1, 2, 3, 4], 8)
+    el = dist > 0
+    shells = wc.distance_shells(dist, el, min_size=5)
+    pos = np.zeros(n, dtype=bool); pos[[9, 12, 20, 27, 35]] = True
+    rows = rng.random((3, n))
+    res = wc.shell_permutation_test(rows, shells, pos, n_perm=2000)
+    direct = max(wc.roc_auc(wc.shell_percentile(r, shells, n)[el], pos[el]) for r in rows)
+    assert abs(res["observed_best"] - direct) < 1e-6 and 0 < res["p_value"] <= 1
+    # a score that marks exactly the positives is significant
+    perfect = pos.astype(float)[None, :]
+    assert wc.shell_permutation_test(perfect, shells, pos, n_perm=2000)["p_value"] < 0.01
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
