@@ -1,8 +1,6 @@
-# core pipeline
 numpy
 scipy
 networkx
 biopython
 matplotlib
-# quantum route only (qmod_walk.py, protein_to_qmod.py)
-classiq
+classiq   # only needed to generate the .qmod; the hump graph runs without it
