@@ -106,6 +106,17 @@ body {
 .options summary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(22, 22, 22, 0.1); }
 .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; padding-top: 16px; }
 .field { display: block; min-width: 0; }
+.span2 { grid-column: span 2; }
+.field-help { display: block; margin-top: 8px; color: var(--muted); font-size: 12.5px; }
+.custom-labels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
+.pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.notes { margin: 16px 0 0; padding: 12px 16px; list-style: none; background: var(--sunken); border: 1px solid var(--line); border-radius: 10px; font-size: 13px; color: var(--ink-2); }
+.notes li + li { margin-top: 6px; }
+.metric-row { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px; font-size: 13px; color: var(--muted); }
+.metric-row strong { font: 600 13px var(--mono); color: var(--ink); margin-left: 6px; }
+td.known { text-align: center; }
+.dot-known { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+.cite { margin-top: 12px; font-size: 12px; color: var(--faint); }
 
 .segmented { display: inline-flex; padding: 3px; background: #f0f0f1; border-radius: var(--radius-sm); gap: 2px; }
 .segmented label { position: relative; }
@@ -195,6 +206,7 @@ body {
 .legend-item { display: inline-flex; align-items: center; gap: 8px; }
 .key-line { width: 22px; height: 0; border-top: 2px solid var(--ink); }
 .key-line.dashed { border-top: 2px dashed #8a8a8a; }
+.key-line.dotted { border-top: 2px dotted #8a8a8a; }
 
 .chart-wrap, .map-wrap { position: relative; }
 .chart-wrap svg, .map-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
@@ -288,7 +300,8 @@ pre.params {
   .page { padding-top: 32px; }
   .card { padding: 16px; }
   .options-grid { grid-template-columns: 1fr; }
-  .toggle { grid-column: auto; }
+  .toggle, .span2 { grid-column: auto; }
+  .custom-labels { grid-template-columns: 1fr; }
   .stats { grid-template-columns: 1fr 1fr; }
   .stat + .stat { border-left: 0; }
   .stat:nth-child(even) { border-left: 1px solid var(--line); }

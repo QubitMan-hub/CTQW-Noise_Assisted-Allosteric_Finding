@@ -11,7 +11,7 @@
   <main class="page">
     <header class="masthead">
       <h1>Protein Walk</h1>
-      <p>Environment-assisted quantum walk on a protein's residue network: transport versus noise, a Qmod circuit, and where the signal goes.</p>
+      <p>Environment-assisted quantum walk on a protein's residue network: does intermediate noise help signal travel, and does it find the known allosteric residues?</p>
     </header>
 
     <form id="run-form" class="card input-card" novalidate>
@@ -59,23 +59,48 @@
             <span class="field-label">Disorder scale</span>
             <input type="number" name="scale" class="input mono" value="3" min="0" max="50" step="0.5">
           </label>
-          <label class="toggle">
-            <input type="checkbox" name="no_qmod" value="1">
-            <span class="switch" aria-hidden="true"></span>
-            <span class="toggle-text">Graph only, skip Qmod</span>
-          </label>
+          <div class="field span2">
+            <span class="field-label">Allosteric labels</span>
+            <div class="segmented" role="radiogroup" aria-label="Allosteric labels">
+              <label><input type="radio" name="labels" value="auto" checked><span>ALLO lookup</span></label>
+              <label><input type="radio" name="labels" value="custom"><span>my residues</span></label>
+              <label><input type="radio" name="labels" value="none"><span>none</span></label>
+            </div>
+            <span class="field-help">ALLO lookup uses the bundled benchmark table (118 proteins, Wu et al. 2022) when the PDB id is in it.</span>
+          </div>
+          <div class="custom-labels span2" id="custom-labels" hidden>
+            <label class="field">
+              <span class="field-label">Active-site residues</span>
+              <input type="text" name="active" class="input mono" placeholder="A:57, A:102" spellcheck="false">
+            </label>
+            <label class="field">
+              <span class="field-label">Known allosteric residues</span>
+              <input type="text" name="allosteric" class="input mono" placeholder="A:196, A:203" spellcheck="false">
+            </label>
+          </div>
           <label class="toggle">
             <input type="checkbox" name="control" value="1" id="control">
             <span class="switch" aria-hidden="true"></span>
             <span class="toggle-text">Compare against random site energies
-              <span class="toggle-sub">Runs the sweep a second time as a null model</span></span>
+              <span class="toggle-sub">Null model over 5 random seeds, drawn as a band. Takes about 6 times longer.</span></span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" name="sensitivity" value="1">
+            <span class="switch" aria-hidden="true"></span>
+            <span class="toggle-text">Sensitivity check
+              <span class="toggle-sub">Re-runs with half and double the walk time and disorder 1.5 and 6</span></span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" name="no_qmod" value="1">
+            <span class="switch" aria-hidden="true"></span>
+            <span class="toggle-text">Graph only, skip Qmod</span>
           </label>
         </div>
       </details>
 
       <div class="actions">
         <button type="submit" class="btn-primary" id="run-btn">Run</button>
-        <span class="hint">Runs the real pipeline locally: about a minute for 70 residues, several minutes for 250.</span>
+        <span class="hint">Runs the real pipeline locally: under a minute for 70 residues, a few minutes for 250.</span>
       </div>
       <p class="error" id="error" role="alert" hidden></p>
     </form>
@@ -85,7 +110,7 @@
         <span class="spinner" aria-hidden="true"></span>
         <div>
           <div class="loading-title">Running pipeline</div>
-          <div class="loading-sub">network, noise sweep, signal map, Qmod</div>
+          <div class="loading-sub">network, labels, noise sweep over 25 rates on all CPU cores, Qmod</div>
         </div>
         <span class="elapsed mono" id="elapsed">00:00</span>
       </div>

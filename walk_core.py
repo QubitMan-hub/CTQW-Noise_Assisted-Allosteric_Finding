@@ -2,14 +2,28 @@
 """walk_core.py - shared physics for the environment-assisted quantum walk.
 
 A continuous-time quantum walk runs on a protein's residue network; a dephasing
-rate gamma dials it from fully quantum (0) to fully classical (large). Every
-other script is a thin CLI over the functions here, so they all agree.
+rate gamma dials it from fully quantum (0) to strongly dephased (large). Every
+other script is a thin layer over the functions here, so they all agree.
+
+Numerics (exact reformulations of the same master equation, checked against the
+original dense solver in tests/test_walk_core.py):
+  * gamma = 0 is solved exactly by diagonalising H (no time stepping);
+  * gamma > 0 uses a sparse H and -i[H, rho] = -i(M - M^dagger) with M = H rho;
+  * several sources are one mixed initial state (the equation is linear).
 """
+import multiprocessing
+import os
+import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures.process import BrokenProcessPool
+
 import numpy as np
 import networkx as nx
+from scipy import sparse
 from scipy.integrate import solve_ivp
 
 _trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
+_THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
 
 # Kyte-Doolittle hydropathy, one value per amino acid. Used as residue site
 # energies: hydrophobic vs polar residues sit in different local environments,
@@ -21,6 +35,10 @@ KYTE_DOOLITTLE = {
     "MET": 1.9, "PHE": 2.8, "PRO": -1.6, "SER": -0.8, "THR": -0.7, "TRP": -0.9,
     "TYR": -1.3, "VAL": 4.2,
 }
+
+# Default dephasing grid: gamma = 0 plus 24 log-spaced rates from 0.01 to 100,
+# fine enough to place the peak to within a fraction of a decade.
+DEFAULT_GAMMAS = [0.0] + [float(f"{g:.4g}") for g in np.logspace(-2, 2, 24)]
 
 
 def load_network(graphml_path):
@@ -65,39 +83,54 @@ def build_hamiltonian(A, resnames, mode="hydropathy", scale=3.0, seed=0):
     return H
 
 
-def run_walk(H, source_idx, gamma, tlist):
-    """Dephased walk from one source residue -> populations, shape (N, len(tlist)).
-    d rho/dt = -i[H, rho] - gamma * (off-diagonal part of rho)."""
+# ------------------------------------------------------------------ dynamics
+def _unitary_populations(H, sources, tlist):
+    """gamma = 0: exact populations from the eigendecomposition of H."""
+    w, V = np.linalg.eigh(np.asarray(H, dtype=complex))
+    phases = np.exp(-1j * np.outer(w, tlist))                  # (n, T)
+    pop = np.zeros((H.shape[0], len(tlist)))
+    for s in sources:
+        psi = V @ (V[s].conj()[:, None] * phases)              # (n, T)
+        pop += np.abs(psi) ** 2
+    return pop / len(sources)
+
+
+def run_walk(H, source_idx, gamma, tlist, rtol=1e-6, atol=1e-9):
+    """Dephased walk -> populations, shape (N, len(tlist)).
+    d rho/dt = -i[H, rho] - gamma * (off-diagonal part of rho).
+    source_idx is one residue index, or several (an equal mixture of them)."""
+    sources = [int(s) for s in np.atleast_1d(source_idx)]
+    tlist = np.asarray(tlist, dtype=float)
+    if gamma == 0:
+        return _unitary_populations(H, sources, tlist)
     n = H.shape[0]
+    Hs = sparse.csr_matrix(np.asarray(H, dtype=complex))
+    diag = np.arange(n)
 
     def rhs(_t, y):
-        rho = np.ascontiguousarray(y).view(complex).reshape(n, n)
-        drho = -1j * (H @ rho - rho @ H)
-        if gamma > 0:
-            off = rho.copy()
-            np.fill_diagonal(off, 0.0)
-            drho -= gamma * off
+        rho = y.view(complex).reshape(n, n)
+        M = Hs @ rho
+        drho = -1j * (M - M.conj().T)                         # -i[H, rho], rho Hermitian
+        drho -= gamma * rho
+        drho[diag, diag] += gamma * rho[diag, diag]            # only coherences decay
         return drho.reshape(-1).view(float)
 
     rho0 = np.zeros((n, n), dtype=complex)
-    rho0[source_idx, source_idx] = 1.0
+    rho0[sources, sources] = 1.0 / len(sources)
     sol = solve_ivp(rhs, (tlist[0], tlist[-1]), rho0.reshape(-1).view(float).copy(),
-                    t_eval=tlist, method="RK45", rtol=1e-6, atol=1e-9)
+                    t_eval=tlist, method="RK45", rtol=rtol, atol=atol)
+    if not sol.success:
+        raise RuntimeError(f"walk integration failed at gamma={gamma}: {sol.message}")
     pop = np.empty((n, len(tlist)))
     for ti in range(sol.y.shape[1]):
         rho = np.ascontiguousarray(sol.y[:, ti]).view(complex).reshape(n, n)
-        pop[:, ti] = np.real(np.diag(rho))
+        pop[:, ti] = np.real(rho[diag, diag])
     return pop
 
 
 def populations_from_sources(H, source_indices, gamma, tlist):
-    """Average the walk over several sources (= starting from an equal mixture,
-    since the master equation is linear in the initial state)."""
-    total = None
-    for s in source_indices:
-        pop = run_walk(H, s, gamma, tlist)
-        total = pop if total is None else total + pop
-    return total / len(source_indices)
+    """Walk from an equal mixture of several sources (one run, by linearity)."""
+    return run_walk(H, list(source_indices), gamma, tlist)
 
 
 def visiting_scores(pop_time, tlist):
@@ -105,6 +138,74 @@ def visiting_scores(pop_time, tlist):
     return _trapz(pop_time, tlist, axis=1)
 
 
+_POOL_STATE = {}
+
+
+def _pool_init(hams, tlist):
+    _POOL_STATE.update(hams=hams, tlist=tlist)
+
+
+def _pool_job(job):
+    key, sources, gamma = job
+    tl = _POOL_STATE["tlist"]
+    return visiting_scores(run_walk(_POOL_STATE["hams"][key], sources, gamma, tl), tl)
+
+
+def default_workers():
+    return max(1, min(8, os.cpu_count() or 1))
+
+
+def sweep_many(hams, jobs, tlist, workers=None):
+    """Run many independent walks and return their visiting-score vectors in order.
+    hams: {key: H}; jobs: [(key, source index or indices, gamma), ...].
+    gamma = 0 jobs are exact and instant, so they run here; the rest are spread
+    over worker processes (same numbers as a serial run, less wall time)."""
+    tlist = np.asarray(tlist, dtype=float)
+    out = [None] * len(jobs)
+    slow = []
+    for i, (key, src, g) in enumerate(jobs):
+        if g == 0:
+            out[i] = visiting_scores(run_walk(hams[key], src, 0.0, tlist), tlist)
+        else:
+            slow.append(i)
+    workers = default_workers() if workers is None else max(1, int(workers))
+    if workers == 1 or len(slow) <= 1:
+        for i in slow:
+            key, src, g = jobs[i]
+            out[i] = visiting_scores(run_walk(hams[key], src, g, tlist), tlist)
+        return out
+    # one BLAS thread per worker, otherwise the processes fight over the cores
+    saved = {v: os.environ.get(v) for v in _THREAD_VARS}
+    os.environ.update({v: "1" for v in _THREAD_VARS})
+    try:
+        ctx = multiprocessing.get_context("spawn")
+        with ProcessPoolExecutor(max_workers=min(workers, len(slow)), mp_context=ctx,
+                                 initializer=_pool_init, initargs=(hams, tlist)) as ex:
+            futures = {ex.submit(_pool_job, jobs[i]): i for i in slow}
+            for f in as_completed(futures):
+                out[futures[f]] = f.result()
+    except BrokenProcessPool:
+        # e.g. an interactive session whose main module cannot be re-imported
+        print("[note] worker processes unavailable; running the sweep serially.", file=sys.stderr)
+        for i in slow:
+            if out[i] is None:
+                key, src, g = jobs[i]
+                out[i] = visiting_scores(run_walk(hams[key], src, g, tlist), tlist)
+    finally:
+        for v, old in saved.items():
+            if old is None:
+                os.environ.pop(v, None)
+            else:
+                os.environ[v] = old
+    return out
+
+
+def sweep_scores(H, source_idx, gammas, tlist, workers=None):
+    """Visiting scores of every residue at every gamma, shape (len(gammas), N)."""
+    return np.array(sweep_many({0: H}, [(0, source_idx, g) for g in gammas], tlist, workers))
+
+
+# ------------------------------------------------------------------ metrics
 def roc_auc(scores, positive_mask):
     """ROC AUC via Mann-Whitney with tie handling. 0.5 random, 1.0 perfect, nan
     if no positives/negatives."""
@@ -128,16 +229,48 @@ def roc_auc(scores, positive_mask):
     return float((ranks[pos].sum() - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg))
 
 
-def sweep_auc(H, source_indices, positive_mask, eligible_mask, gammas, tlist):
+def sweep_auc(H, source_indices, positive_mask, eligible_mask, gammas, tlist, workers=None):
     """AUC for recovering the positive residues at each gamma (eligible only)."""
-    out = []
-    for g in gammas:
-        pop = populations_from_sources(H, source_indices, g, tlist)
-        scores = visiting_scores(pop, tlist)
-        out.append(roc_auc(scores[eligible_mask], positive_mask[eligible_mask]))
-    return np.array(out)
+    scores = sweep_scores(H, list(source_indices), gammas, tlist, workers)
+    return np.array([roc_auc(s[eligible_mask], positive_mask[eligible_mask]) for s in scores])
 
 
+def distal_mask(G, nodes, source_ids, fraction=0.5):
+    """Residues in the far part of the network from the source(s): hop distance at
+    least ceil(fraction * eccentricity). Averaging transport over this set is far
+    less arbitrary than a single 'farthest' residue. Returns (mask, min_hops)."""
+    source_ids = [source_ids] if isinstance(source_ids, str) else list(source_ids)
+    dist = {}
+    for s in source_ids:
+        for k, d in nx.single_source_shortest_path_length(G, s).items():
+            dist[k] = min(d, dist.get(k, d))
+    ecc = max(dist.values()) if dist else 0
+    min_hops = max(1, int(np.ceil(fraction * ecc)))
+    mask = np.array([dist.get(n, -1) >= min_hops for n in nodes], dtype=bool)
+    return mask, min_hops
+
+
+def hump_stats(gammas, values):
+    """Peak, verdict and effect size of a curve over the gamma grid.
+    baseline = the better of the two ends (fully quantum, most dephased);
+    gain = peak - baseline; 'helps' = grid range where the curve beats both ends."""
+    g, v = np.asarray(gammas, dtype=float), np.asarray(values, dtype=float)
+    peak = int(np.nanargmax(v))
+    baseline = float(max(v[0], v[-1]))
+    interior = 0 < peak < len(v) - 1 and v[peak] > baseline + 1e-12
+    verdict = "hump" if interior else ("quantum" if peak == 0 else "dephased")
+    above = np.where(v > baseline + 1e-12)[0]
+    helps = [float(g[above[0]]), float(g[above[-1]])] if interior and len(above) else None
+    return {"peak_index": peak, "peak_gamma": float(g[peak]), "peak_value": float(v[peak]),
+            "quantum_value": float(v[0]), "dephased_value": float(v[-1]), "baseline": baseline,
+            "gain_abs": float(v[peak] - baseline),
+            "gain_rel": float((v[peak] - baseline) / baseline) if baseline > 0 else float("nan"),
+            "helps_range": helps,
+            "helps_decades": (float(np.log10(helps[1] / helps[0])) if helps and helps[0] > 0 else None),
+            "verdict": verdict}
+
+
+# ------------------------------------------------------------------ quantum encoding
 def pad_to_power_of_two(H):
     """Pad an N x N Hermitian matrix to 2^n x 2^n (amplitude encoding needs it)."""
     n_qubits = max(1, int(np.ceil(np.log2(H.shape[0]))))
@@ -176,3 +309,63 @@ def pauli_reconstruct(terms, n):
             op = np.kron(op, P[ch])
         M += c * op
     return M
+
+
+def _pauli_actions(terms, n):
+    """For each Pauli string: (index map, phase vector) with (P psi) = phase * psi[map].
+    Character 0 of a string is the most significant bit, as in pauli_decompose."""
+    k = np.arange(2 ** n)
+    parity = np.zeros(2 ** n, dtype=np.int8)
+    for b in range(n):
+        parity ^= ((k >> b) & 1).astype(np.int8)
+    acts = []
+    for s, c in terms:
+        xm = zm = ny = 0
+        for p, ch in enumerate(s):
+            bit = 1 << (n - 1 - p)
+            if ch in "XY":
+                xm |= bit
+            if ch in "ZY":
+                zm |= bit
+            ny += ch == "Y"
+        src = k ^ xm                                           # P|j> lands on |j ^ xm>
+        phase = (1j ** ny) * (1 - 2 * parity[src & zm].astype(float))
+        acts.append((src, phase, c))
+    return acts
+
+
+def _suzuki(psi, acts, dt, order):
+    """One Suzuki-Trotter step of the given (1 or even) order, term order as listed."""
+    if order == 1:
+        for src, phase, c in acts:
+            psi = np.cos(c * dt) * psi - 1j * np.sin(c * dt) * phase * psi[src]
+        return psi
+    if order == 2:
+        for src, phase, c in acts:
+            psi = np.cos(c * dt / 2) * psi - 1j * np.sin(c * dt / 2) * phase * psi[src]
+        for src, phase, c in reversed(acts):
+            psi = np.cos(c * dt / 2) * psi - 1j * np.sin(c * dt / 2) * phase * psi[src]
+        return psi
+    p = 1.0 / (4.0 - 4.0 ** (1.0 / (order - 1)))
+    for f in (p, p, 1 - 4 * p, p, p):
+        psi = _suzuki(psi, acts, f * dt, order - 2)
+    return psi
+
+
+def trotter_check(terms, n_qubits, H_padded, source_index, time, order, repetitions, n_residues):
+    """How far the product-formula circuit (standard Suzuki-Trotter, terms in the
+    listed order) is from exact exp(-iHt) on the source state. Returns fidelity
+    |<exact|trotter>|^2 and the largest residue-population error."""
+    if order != 1 and order % 2:
+        raise ValueError("Suzuki-Trotter order must be 1 or even.")
+    psi0 = np.zeros(2 ** n_qubits, dtype=complex)
+    psi0[source_index] = 1.0
+    w, V = np.linalg.eigh(H_padded)
+    exact = V @ (np.exp(-1j * w * time) * V[source_index].conj())
+    acts = _pauli_actions(terms, n_qubits)
+    psi = psi0
+    for _ in range(repetitions):
+        psi = _suzuki(psi, acts, time / repetitions, order)
+    fid = float(abs(np.vdot(exact, psi)) ** 2)
+    dpop = float(np.max(np.abs(np.abs(exact[:n_residues]) ** 2 - np.abs(psi[:n_residues]) ** 2)))
+    return {"fidelity": fid, "max_population_error": dpop}
