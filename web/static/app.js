@@ -216,7 +216,7 @@ function controlNote(ctrl, st) {
   const humps = ctrl.seed_verdicts ? `${ctrl.seed_verdicts.filter((v) => v === "hump").length} of ${ctrl.seed_verdicts.length} seeds show a hump; ` : "";
   return el("p", { class: "note" }, "Random-energy control: ",
     el("span", { class: "mono", text: verdictText(ctrl.stats, "mean curve").toLowerCase() }), `. ${humps}`,
-    `the real curve's gain exceeds ${ctrl.exceeds_seeds} of ${ctrl.n_seeds} seed gains`,
+    `${humps ? "the" : "The"} real curve's gain exceeds ${ctrl.exceeds_seeds} of ${ctrl.n_seeds} seed gains`,
     ctrl.z !== null ? ` (z = ${fmt(ctrl.z, 2)}).` : ".",
     st.verdict === "hump" && ctrl.exceeds_seeds < ctrl.n_seeds
       ? " A hump that random energies reproduce is not specific to the hydropathy model." : "");
