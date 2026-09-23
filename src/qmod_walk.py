@@ -29,7 +29,7 @@ def write_qmod(terms, n_qubits, source_index, evolution_time, order, repetitions
                          suzuki_trotter, create_model, Pauli, PauliTerm)
     pmap = {"I": Pauli.I, "X": Pauli.X, "Y": Pauli.Y, "Z": Pauli.Z}
     ham = [PauliTerm(pauli=[pmap[c] for c in s], coefficient=v) for s, v in terms]
-    set_bits = [q for q in range(n_qubits) if (source_index >> (n_qubits - 1 - q)) & 1]
+    set_bits = [q for q in range(n_qubits) if (source_index >> q) & 1]
 
     @qfunc
     def main(q: Output[QArray[QBit]]):
