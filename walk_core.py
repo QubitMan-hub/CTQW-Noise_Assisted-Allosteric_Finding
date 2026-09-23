@@ -9,7 +9,8 @@ Numerics (exact reformulations of the same master equation, checked against the
 original dense solver in tests/test_walk_core.py):
   * gamma = 0 is solved exactly by diagonalising H (no time stepping);
   * gamma > 0 uses a sparse H and -i[H, rho] = -i(M - M^dagger) with M = H rho;
-  * several sources are one mixed initial state (the equation is linear).
+  * several sources are one mixed initial state (the equation is linear);
+  * only populations are stored, so memory grows as N^2, not N^2 x time points.
 """
 import multiprocessing
 import os
@@ -20,7 +21,7 @@ from concurrent.futures.process import BrokenProcessPool
 import numpy as np
 import networkx as nx
 from scipy import sparse
-from scipy.integrate import solve_ivp
+from scipy.integrate import RK45
 
 _trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
 _THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
@@ -36,9 +37,8 @@ KYTE_DOOLITTLE = {
     "TYR": -1.3, "VAL": 4.2,
 }
 
-# Default dephasing grid: gamma = 0 plus 24 log-spaced rates from 0.01 to 100,
-# fine enough to place the peak to within a fraction of a decade.
-DEFAULT_GAMMAS = [0.0] + [float(f"{g:.4g}") for g in np.logspace(-2, 2, 24)]
+# Default dephasing grid: gamma = 0 plus 4 rates per decade from 0.01 to 100.
+DEFAULT_GAMMAS = [0.0] + [float(f"{g:.4g}") for g in np.logspace(-2, 2, 17)]
 
 
 def load_network(graphml_path):
@@ -117,14 +117,20 @@ def run_walk(H, source_idx, gamma, tlist, rtol=1e-6, atol=1e-9):
 
     rho0 = np.zeros((n, n), dtype=complex)
     rho0[sources, sources] = 1.0 / len(sources)
-    sol = solve_ivp(rhs, (tlist[0], tlist[-1]), rho0.reshape(-1).view(float).copy(),
-                    t_eval=tlist, method="RK45", rtol=rtol, atol=atol)
-    if not sol.success:
-        raise RuntimeError(f"walk integration failed at gamma={gamma}: {sol.message}")
+    # Same stepping and interpolation as solve_ivp(..., t_eval=tlist), but only the
+    # populations are kept: memory O(N^2) instead of O(N^2 * len(tlist)).
+    solver = RK45(rhs, tlist[0], rho0.reshape(-1).view(float).copy(), tlist[-1], rtol=rtol, atol=atol)
     pop = np.empty((n, len(tlist)))
-    for ti in range(sol.y.shape[1]):
-        rho = np.ascontiguousarray(sol.y[:, ti]).view(complex).reshape(n, n)
-        pop[:, ti] = np.real(rho[diag, diag])
+    flat_diag = 2 * (diag * n + diag)                          # real parts of rho[i, i] in the float view
+    i = 0
+    while solver.status == "running":
+        solver.step()
+        if solver.status == "failed":
+            raise RuntimeError(f"walk integration failed at gamma={gamma}")
+        j = int(np.searchsorted(tlist, solver.t, side="right"))
+        if j > i:
+            pop[:, i:j] = solver.dense_output()(tlist[i:j])[flat_diag]
+            i = j
     return pop
 
 

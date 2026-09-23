@@ -8,7 +8,7 @@ the output folder:
 
     NAME.graphml             the residue network
     NAME_hump.png/.svg/.csv  transport vs noise: mean signal reaching the distal
-                             residues (the far half of the network from the source)
+                             residues (the far half of the network from the start)
     NAME_allosteric.*        if active/allosteric labels are known: how well the
                              walk from the active site ranks the known allosteric
                              residues (ROC AUC) at each gamma, with baselines
@@ -18,7 +18,9 @@ the output folder:
     NAME_result.json         all numbers behind the figures
 
 Labels are looked up automatically in the bundled ALLO benchmark table (118
-proteins) by PDB id, or given with --active/--allosteric or --labels FILE.json.
+proteins) by PDB id, or given with --active/--allosteric. With labels, the walk
+starts at the active site and that one walk gives both curves; without them it
+starts at --source (default: the most-connected residue).
 --control adds the null model: the same sweep with random site energies over
 several seeds, drawn as a band. Sweeps run in parallel over the CPU cores.
 """
@@ -41,7 +43,7 @@ DEFAULTS = dict(
     control=False, control_seeds=5,
     labels="auto", active=None, allosteric=None, site=None,
     qmod=True, qmod_time=1.0, qmod_order=2, qmod_repetitions=4, qmod_precision=12,
-    max_residues=200, force=False, sensitivity=False, workers=None,
+    max_residues=200, force=False, workers=None,
 )
 
 EXEC_SCAFFOLD = '''\
@@ -253,16 +255,10 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
     degree = dict(G.degree())
     log(f"[network] {N} residues, {G.number_of_edges()} contacts, chains {sorted({n.split(':')[0] for n in nodes})}")
 
-    # 3) source, target, distal set
     if o["source"] and o["source"] not in idx:
         raise InputError(f"start residue {o['source']} is not in the network; ids look like {', '.join(nodes[:3])}.")
-    source_id = o["source"] or max(degree, key=degree.get)
-    target_id = max(nx.single_source_shortest_path_length(G, source_id).items(), key=lambda kv: kv[1])[0]
-    distal, distal_hops = wc.distal_mask(G, nodes, source_id, o["distal_fraction"])
-    if not distal.any():
-        raise InputError("the source residue has no distal residues (the network is too small).")
 
-    # 4) labels onto the network
+    # 3) labels onto the network
     allo = None
     if labels:
         rep = lb.match(labels, nodes, resnames)
@@ -282,6 +278,20 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         else:
             notes.append("allosteric test skipped: no usable active-site or allosteric residues in this network")
 
+    # 4) one walk per noise level: from the active site when labels exist (it feeds
+    #    both the transport curve and the allosteric test), else from one residue
+    if allo:
+        walk_src = list(allo["rep"]["active"])
+        source_id = o["source"] or max((nodes[i] for i in walk_src), key=degree.get)
+        walk_from = "active site"
+    else:
+        source_id = o["source"] or max(degree, key=degree.get)
+        walk_src = [idx[source_id]]
+        walk_from = source_id
+    distal, distal_hops = wc.distal_mask(G, nodes, [nodes[i] for i in walk_src], o["distal_fraction"])
+    if not distal.any():
+        raise InputError("the network is too small: no residues lie far from the walk's start.")
+
     # 5) every walk this run needs, in one parallel batch
     hams = {"main": wc.build_hamiltonian(A, resnames, o["site_energy"], o["scale"], o["seed"])}
     control_keys = []
@@ -297,22 +307,19 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         where[(tag, key)] = len(jobs)
         jobs.extend((key, src, g) for g in gammas)
     for key in ["main"] + control_keys:
-        add("transport", key, idx[source_id])
-        if allo:
-            add("allosteric", key, list(allo["rep"]["active"]))
+        add("walk", key, walk_src)
     log(f"[sweep] {len(jobs)} walks over {len(gammas)} dephasing rates"
         f"{' with ' + str(len(control_keys)) + ' random-energy seeds' if control_keys else ''}")
     flat = wc.sweep_many(hams, jobs, tlist, o["workers"])
     block = lambda tag, key: np.array(flat[where[(tag, key)]: where[(tag, key)] + len(gammas)])
 
     # 6) transport metrics
-    S = block("transport", "main")
+    S = block("walk", "main")
     transport = S[:, distal].mean(axis=1)
-    transport_target = S[:, idx[target_id]]
     t_stats = wc.hump_stats(gammas, transport)
     t_ctrl = None
     if control_keys:
-        curves = [block("transport", k)[:, distal].mean(axis=1) for k in control_keys]
+        curves = [block("walk", k)[:, distal].mean(axis=1) for k in control_keys]
         m, s = _band(curves)
         t_ctrl = {"mean": m.tolist(), "sd": s.tolist(), "stats": wc.hump_stats(gammas, m),
                   "seed_verdicts": [wc.hump_stats(gammas, c)["verdict"] for c in curves],
@@ -322,8 +329,7 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
     a_res = None
     if allo:
         el, pos = allo["eligible"], allo["positive"]
-        SA = block("allosteric", "main")
-        auc = np.array([wc.roc_auc(s[el], pos[el]) for s in SA])
+        auc = np.array([wc.roc_auc(s[el], pos[el]) for s in S])
         a_stats = wc.hump_stats(gammas, auc)
         dist_act = {}
         for a in allo["rep"]["active"]:
@@ -335,7 +341,7 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
                      "proximity to active site": wc.roc_auc(prox[el], pos[el])}
         a_ctrl = None
         if control_keys:
-            curves = [np.array([wc.roc_auc(s[el], pos[el]) for s in block("allosteric", k)]) for k in control_keys]
+            curves = [np.array([wc.roc_auc(s[el], pos[el]) for s in block("walk", k)]) for k in control_keys]
             m, s = _band(curves)
             a_ctrl = {"mean": m.tolist(), "sd": s.tolist(), "stats": wc.hump_stats(gammas, m),
                       **_gain_rank(a_stats["gain_abs"], [wc.hump_stats(gammas, c)["gain_abs"] for c in curves])}
@@ -345,22 +351,18 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
                  "n_candidates": int(el.sum()),
                  "active": [nodes[i] for i in rep["active"]], "allosteric": [nodes[i] for i in np.where(pos)[0]],
                  "missing": {"active": rep["active_missing"], "allosteric": rep["allosteric_missing"]},
-                 "name_mismatch": rep["name_mismatch"],
-                 "best_gamma_scores": SA[a_stats["peak_index"]]}
+                 "name_mismatch": rep["name_mismatch"]}
 
-    # 8) signal map + ranking: from the active site at the best-AUC gamma when
-    #    labels exist, otherwise from the transport source at the transport peak
-    if a_res:
-        map_scores, map_gamma, map_from = a_res.pop("best_gamma_scores"), a_stats["peak_gamma"], "active site"
-        sources_idx, known = set(allo["rep"]["active"]), set(np.where(allo["positive"])[0])
-    else:
-        map_scores, map_gamma, map_from = S[t_stats["peak_index"]], t_stats["peak_gamma"], "source"
-        sources_idx, known = {idx[source_id]}, set()
+    # 6) signal map + ranking at the best-AUC gamma (labels) or the transport peak
+    peak = a_res["stats"]["peak_index"] if a_res else t_stats["peak_index"]
+    map_scores, map_gamma, map_from = S[peak], gammas[peak], ("active site" if allo else "source")
+    sources_idx = set(walk_src)
+    known = set(np.where(allo["positive"])[0]) if allo else set()
     order = [i for i in np.argsort(-map_scores, kind="stable") if i not in sources_idx]
     ranking = [{"rank": r + 1, "id": nodes[i], "resname": resnames[i], "score": float(map_scores[i]),
                 "degree": int(degree[nodes[i]]), "known_allosteric": i in known} for r, i in enumerate(order)]
 
-    # 9) Qmod + Trotter check
+    # 7) Qmod + Trotter check
     qmod = {"status": None, "file": None}
     H = hams["main"]
     if not o["qmod"]:
@@ -390,39 +392,15 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
             except Exception as e:
                 qmod.update(status="failed", error=(str(e).splitlines() or [type(e).__name__])[0][:160])
 
-    # 10) optional sensitivity check: does the verdict survive other reasonable settings?
-    sens = None
-    if o["sensitivity"]:
-        sens = []
-        variants = [("tmax x0.5", o["scale"], o["tmax"] / 2), ("tmax x2", o["scale"], o["tmax"] * 2),
-                    ("scale 1.5", 1.5, o["tmax"]), ("scale 6", 6.0, o["tmax"])]
-        for name, sc, tm in variants:
-            Hv = {"v": wc.build_hamiltonian(A, resnames, o["site_energy"], sc, o["seed"])}
-            tl = np.linspace(0, tm, max(50, int(round(o["ntime"] * tm / o["tmax"]))))
-            vj = [("v", idx[source_id], g) for g in gammas]
-            if allo:
-                vj += [("v", list(allo["rep"]["active"]), g) for g in gammas]
-            out = wc.sweep_many(Hv, vj, tl, o["workers"])
-            st = wc.hump_stats(gammas, np.array(out[:len(gammas)])[:, distal].mean(axis=1))
-            row = {"variant": name, "transport_verdict": st["verdict"], "transport_peak_gamma": st["peak_gamma"],
-                   "transport_gain": st["gain_abs"]}
-            if allo:
-                el, pos = allo["eligible"], allo["positive"]
-                au = wc.hump_stats(gammas, [wc.roc_auc(s[el], pos[el]) for s in out[len(gammas):]])
-                row.update(auc_verdict=au["verdict"], auc_peak_gamma=au["peak_gamma"],
-                           auc_peak=au["peak_value"], auc_gain=au["gain_abs"])
-            sens.append(row)
-            log(f"[sensitivity] {name}: transport {st['verdict']} at gamma={st['peak_gamma']:g}")
-
-    # 11) files
+    # 8) files
     files = {"graphml": prefix + ".graphml", "hump_csv": prefix + "_hump.csv",
              "hump_png": prefix + "_hump.png", "hump_svg": prefix + "_hump.svg",
              "ranking_csv": prefix + "_ranking.csv", "parameters": prefix + "_parameters.json",
              "result": prefix + "_result.json"}
     with open(os.path.join(outdir, files["hump_csv"]), "w") as f:
-        f.write("gamma,transport_distal_mean,transport_farthest" + (",control_mean,control_sd" if t_ctrl else "") + "\n")
+        f.write("gamma,transport_distal_mean" + (",control_mean,control_sd" if t_ctrl else "") + "\n")
         for i, g in enumerate(gammas):
-            f.write(f"{g},{transport[i]:.6f},{transport_target[i]:.6f}"
+            f.write(f"{g},{transport[i]:.6f}"
                     + (f",{t_ctrl['mean'][i]:.6f},{t_ctrl['sd'][i]:.6f}" if t_ctrl else "") + "\n")
     save_figure(os.path.join(outdir, prefix + "_hump"), gammas, transport, f"{o['site_energy']} site energies",
                 "mean signal reaching distal residues",
@@ -450,19 +428,13 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
                     "contacts", "known_allosteric"])
         w.writerows([[r["rank"], r["id"], r["resname"], f"{r['score']:.6f}", r["degree"],
                       "yes" if r["known_allosteric"] else ""] for r in ranking])
-    if sens:
-        files["sensitivity_csv"] = prefix + "_sensitivity.csv"
-        with open(os.path.join(outdir, files["sensitivity_csv"]), "w", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=list(sens[0]))
-            w.writeheader(); w.writerows(sens)
     if qmod["file"]:
         files["qmod"] = qmod["file"]
 
-    params = {k: o[k] for k in DEFAULTS if k not in ("workers",)}
+    params = {k: o[k] for k in DEFAULTS if k != "workers"}
     params.update(input=inp if not os.path.isfile(inp) else os.path.basename(inp), cutoff=cutoff, gammas=gammas,
-                  chains_used=sorted({n.split(':')[0] for n in nodes}), source=source_id,
-                  source_mode="user" if o["source"] else "auto: most connected", target_farthest=target_id,
-                  distal_min_hops=distal_hops, labels_used=(
+                  chains_used=sorted({n.split(':')[0] for n in nodes}), qmod_source=source_id,
+                  walk_from=walk_from, distal_min_hops=distal_hops, labels_used=(
                       {k: v for k, v in labels.items() if k not in ("active", "allosteric")} if labels else None),
                   code_version=code_version(), created_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
     if os.path.isfile(inp):
@@ -475,21 +447,20 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
     result = {
         "name": prefix, "elapsed_s": round(time.time() - t0, 1), "notes": notes, "label_note": label_note,
         "summary": {"residues": N, "contacts": G.number_of_edges(), "qubits": max(1, int(np.ceil(np.log2(N)))),
-                    "chains": sorted({n.split(':')[0] for n in nodes}), "source": source_id,
-                    "source_auto": not o["source"], "target_farthest": target_id,
+                    "chains": sorted({n.split(':')[0] for n in nodes}), "walk_from": walk_from,
+                    "qmod_source": source_id,
                     "distal_count": int(distal.sum()), "distal_min_hops": distal_hops,
                     "site_energy": o["site_energy"], "scale": o["scale"], "max_residues": o["max_residues"]},
         "gammas": gammas,
-        "transport": {"distal_mean": transport.tolist(), "farthest": transport_target.tolist(),
+        "transport": {"distal_mean": transport.tolist(),
                       "stats": t_stats, "control": t_ctrl},
         "allosteric": a_res,
-        "qmod": qmod, "sensitivity": sens, "allo_entries": allo_entries,
+        "qmod": qmod, "allo_entries": allo_entries,
         "map": {"nodes": [{"id": n, "resname": resnames[i], "x": float(xy[i, 0]), "y": float(xy[i, 1]),
                            "score": float(map_scores[i]), "degree": int(degree[n]),
                            "role": ("source" if i in sources_idx else "allosteric" if i in known else "")}
                           for i, n in enumerate(nodes)],
                 "edges": [[idx[u], idx[v]] for u, v in G.edges()], "gamma": map_gamma, "from": map_from,
-                "target": idx[target_id] if not a_res else None,
                 "aspect": float(max(xy[:, 1].max(), 1e-3) / max(xy[:, 0].max(), 1e-3))},
         "ranking": ranking, "files": files, "parameters": params,
     }
@@ -526,7 +497,7 @@ def _verdict_line(stats, what):
 def main():
     ap = argparse.ArgumentParser(description="One protein: structure -> network, noise sweep, allosteric test, Qmod.")
     ap.add_argument("input", help="PDB/mmCIF file, or a 4-character PDB id.")
-    ap.add_argument("--source", default=None, help="Transport start residue, e.g. A:151 (default: most connected).")
+    ap.add_argument("--source", default=None, help="Start residue without labels, e.g. A:151 (default: most connected); also the Qmod start.")
     ap.add_argument("--chains", default=None, help="Chains to include (default: the labels' chains, else all).")
     ap.add_argument("--model", type=int, default=0, help="Model index for NMR files.")
     ap.add_argument("--method", choices=["cb", "ca", "heavy"], default="cb")
@@ -536,12 +507,12 @@ def main():
     ap.add_argument("--site-energy", choices=["none", "hydropathy", "degree", "random"], default="hydropathy")
     ap.add_argument("--scale", type=float, default=3.0, help="Site-energy disorder strength.")
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--gammas", default=None, help="Comma-separated dephasing rates starting at 0 (default: 0 + 24 log-spaced from 0.01 to 100).")
+    ap.add_argument("--gammas", default=None, help="Comma-separated dephasing rates starting at 0 (default: 0 + 4 per decade from 0.01 to 100).")
     ap.add_argument("--tmax", type=float, default=30.0)
     ap.add_argument("--ntime", type=int, default=200)
     ap.add_argument("--control", action="store_true", help="Also run random site energies (null model) over several seeds.")
     ap.add_argument("--control-seeds", type=int, default=5)
-    ap.add_argument("--labels", default="auto", help="'auto' (ALLO table by PDB id), 'none', or a labels JSON file.")
+    ap.add_argument("--labels", choices=["auto", "none"], default="auto", help="auto: ALLO table by PDB id; none: skip.")
     ap.add_argument("--active", default=None, help="Active-site residues, e.g. A:57,A:102.")
     ap.add_argument("--allosteric", default=None, help="Known allosteric residues, e.g. A:196,A:203.")
     ap.add_argument("--site", default=None, help="Which ALLO entry when a PDB has several (e.g. 2 for 1CE8_2).")
@@ -551,7 +522,6 @@ def main():
     ap.add_argument("--max-residues", type=int, default=200, help="Skip the Qmod above this size unless --force.")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--no-qmod", action="store_true", help="Skip the circuit.")
-    ap.add_argument("--sensitivity", action="store_true", help="Re-run under tmax x0.5/x2 and scale 1.5/6.")
     ap.add_argument("--workers", type=int, default=None, help="Parallel processes (default: CPU cores, max 8).")
     ap.add_argument("--outdir", default="output")
     ap.add_argument("--prefix", default=None)
@@ -563,7 +533,7 @@ def main():
                 seed=a.seed, tmax=a.tmax, ntime=a.ntime, control=a.control, control_seeds=a.control_seeds,
                 labels=a.labels, active=a.active, allosteric=a.allosteric, site=a.site, qmod=not a.no_qmod,
                 qmod_time=a.time, qmod_order=a.order, qmod_repetitions=a.repetitions,
-                max_residues=a.max_residues, force=a.force, sensitivity=a.sensitivity, workers=a.workers)
+                max_residues=a.max_residues, force=a.force, workers=a.workers)
     if a.gammas:
         opts["gammas"] = [float(x) for x in a.gammas.split(",")]
     try:
@@ -572,7 +542,7 @@ def main():
         sys.exit(f"\n[error] {e}")
 
     s, t = r["summary"], r["transport"]
-    print(f"\n{r['name']}: {s['residues']} residues, source {s['source']}, "
+    print(f"\n{r['name']}: {s['residues']} residues, walk from {s['walk_from']}, "
           f"{s['distal_count']} distal residues (>= {s['distal_min_hops']} contacts away)")
     print("  " + _verdict_line(t["stats"], "transport"))
     if t["control"]:

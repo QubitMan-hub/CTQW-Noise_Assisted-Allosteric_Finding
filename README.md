@@ -1,7 +1,7 @@
 # Environment-assisted quantum walk, one protein at a time
 
 Drop in a protein structure. The pipeline builds the residue contact network,
-runs a dephased quantum walk across 25 noise levels, and answers two questions:
+runs a dephased quantum walk across 18 noise levels, and answers two questions:
 
 1. **Transport:** does an intermediate amount of noise move signal through the
    protein better than a fully quantum or a strongly dephased walk (the
@@ -29,14 +29,16 @@ Outputs land in `output/`:
     NAME.graphml                   the residue network
     NAME_parameters.json           every setting, the labels used, a code version
     NAME_result.json               every number behind the figures
-    NAME_sensitivity.csv           with --sensitivity
 
 ## What is measured
 
+- **One walk per noise level.** With labels it starts at the active site and
+  feeds both results; without labels it starts at `--source` (default: the
+  most-connected residue).
 - **Transport** is the time-integrated signal reaching the *distal* residues,
-  those at least half the network's radius (in contacts) from the source. That
-  is averaged over dozens of residues, so it is much less arbitrary than a single
-  "farthest" residue (which is still in the CSV).
+  those at least half the network's radius (in contacts) from the start. That is
+  averaged over dozens of residues, so it is much less arbitrary than a single
+  "farthest" residue.
 - **Hump effect size:** peak minus the better of the two ends, in absolute and
   relative terms, and the range of noise over which the walk beats both ends.
 - **Allosteric test:** the walk starts from all active-site residues together
@@ -48,8 +50,6 @@ Outputs land in `output/`:
   5 seeds, drawn as a mean ± sd band, plus how the real hump's gain ranks among
   the seeds. A hump that random energies reproduce is not specific to the
   hydropathy model.
-- **Sensitivity (`--sensitivity`):** re-runs with half and double the walk time
-  and disorder 1.5 and 6, so you can check that a finding does not flip.
 - **Qmod quality:** the Trotter fidelity of the written circuit against the exact
   evolution, reported in the output.
 
@@ -66,31 +66,31 @@ Outputs land in `output/`:
 
 ## Options you might use
 
-    --source A:151          transport start residue (default: most connected)
+    --source A:151          start residue when there are no labels (default: most connected)
     --chains A              chains to include (default: the labels' chains, else all)
     --labels none           skip the allosteric test (default: ALLO lookup by PDB id)
     --active A:57,A:102 --allosteric A:196,A:203   your own labels
     --site 2                which ALLO entry when a PDB has several (e.g. 1CE8_2)
     --control               null model over random site energies (--control-seeds 5)
-    --sensitivity           robustness re-runs
     --site-energy random    random energies for the main run
     --scale 3               site-energy disorder strength
     --gammas 0,0.1,1,10     your own noise grid (must start at 0)
     --workers 4             parallel processes (default: CPU cores, max 8)
-    --no-qmod               skip the circuit
+    --no-qmod               skip the circuit (the slowest step for proteins under 200 residues)
     --max-residues 200      skip the Qmod above this size (the graphs still run)
 
 ## Speed and exactness
 
 - With no noise the walk is solved exactly by diagonalising H.
 - With noise it uses a sparse H, one mixed-state run for many source residues
-  (exact, because the equation is linear), and the noise levels in parallel
-  across CPU cores.
+  (exact, because the equation is linear), the noise levels in parallel across
+  CPU cores, and only the populations are stored (memory grows as N^2).
 - `tests/test_walk_core.py` checks this against the original dense solver
   (agreement to about 1e-15 with noise; the old solver's own error without it).
 
-A 250-residue protein takes a little over a minute on 4 cores for 25 noise
-levels, versus several minutes for 12 levels before.
+Typical times on 4 cores: 4OBE chain A (169 residues) about 25 s without the
+Qmod and 2 min with the 5-seed control; both chains (339 residues) about 2 min.
+Time grows roughly with the square of the residue count.
 
 ## Notes
 

@@ -2,7 +2,7 @@
 """labels.py - known active-site and allosteric residues for a protein.
 
 Labels come from, in order of precedence:
-  1. residues you give (--active / --allosteric, or a JSON file via --labels),
+  1. residues you give (--active / --allosteric),
   2. the bundled ALLO benchmark table (data/allo_labels.csv), looked up by the
      structure's PDB id. That table is Supplementary Table S2 of
      Wu, Stromich & Yaliraki, "Prediction of allosteric sites and signaling:
@@ -13,7 +13,7 @@ Labels come from, in order of precedence:
 Residue ids use the network's convention, CHAIN:RESSEQ[ICODE] in author
 numbering, e.g. A:57 or A:57B.
 """
-import csv, json, os, re
+import csv, os, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TABLE_PATH = os.path.join(HERE, "data", "allo_labels.csv")
@@ -80,15 +80,6 @@ def from_table_row(row):
             "allosteric": parse_residues(row["allosteric_site"])}
 
 
-def from_json(path):
-    d = json.load(open(path))
-    act = d.get("active", d.get("source", []))
-    allo = d.get("allosteric", [])
-    join = lambda v: v if isinstance(v, str) else ",".join(v)
-    return {"origin": "file", "entry": os.path.basename(path), "active": parse_residues(join(act)),
-            "allosteric": parse_residues(join(allo))}
-
-
 def resolve(inp, labels_arg="auto", active=None, allosteric=None, site=None, default_chain=None):
     """Work out which labels apply. Returns (labels or None, note, other ALLO entries)."""
     if active or allosteric:
@@ -96,10 +87,8 @@ def resolve(inp, labels_arg="auto", active=None, allosteric=None, site=None, def
             raise ValueError("give both --active and --allosteric, or neither.")
         return ({"origin": "user", "entry": "command line", "active": parse_residues(active, default_chain),
                  "allosteric": parse_residues(allosteric, default_chain)}, "labels from the command line", [])
-    if labels_arg in (None, "", "none"):
-        return None, "labels off", []
     if labels_arg != "auto":
-        return from_json(labels_arg), f"labels from {os.path.basename(labels_arg)}", []
+        return None, "labels off", []
     pid = structure_id(inp)
     rows = [r for r in load_table() if r["pdb"].upper() == pid] if pid else []
     if not rows:

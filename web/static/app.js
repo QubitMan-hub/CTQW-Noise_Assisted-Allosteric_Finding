@@ -143,7 +143,7 @@ function renderResults(r) {
   charts.length = 0;
   const root = $("#results");
   root.replaceChildren(...[summaryCard(r), r.allosteric ? allostericCard(r) : null, transportCard(r),
-    mapCard(r), rankingCard(r), r.sensitivity ? sensitivityCard(r) : null, filesCard(r)].filter(Boolean));
+    mapCard(r), rankingCard(r), filesCard(r)].filter(Boolean));
   [...root.children].forEach((c, i) => { c.classList.add("reveal"); c.style.animationDelay = `${i * 40}ms`; });
   redraw();
   root.firstElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -186,8 +186,7 @@ function summaryCard(r) {
     el("dl", { class: "facts" },
       el("dt", { text: "Labels" }), el("dd", { text: r.label_note }),
       el("dt", { text: "Transport" }),
-      el("dd", {}, "from ", el("span", { class: "mono", text: s.source }),
-        el("span", { class: "tag", text: s.source_auto ? "auto: most connected" : "set by you" }),
+      el("dd", {}, "from ", el("span", { class: s.walk_from === "active site" ? "" : "mono", text: s.walk_from }),
         ` to the ${s.distal_count} residues at least ${s.distal_min_hops} contacts away`),
       el("dt", { text: "Site energies" }),
       el("dd", {}, el("span", { class: "mono", text: `${s.site_energy}, scale ${s.scale}` })),
@@ -262,7 +261,7 @@ function transportCard(r) {
       el("div", {},
         el("h3", { class: "card-title", text: "Transport versus noise" }),
         el("p", { class: "card-sub" }, "Mean signal reaching the far part of the network from ",
-          el("span", { class: "mono", text: s.source }), ` across ${r.gammas.length} dephasing rates`))),
+          el("span", { class: s.walk_from === "active site" ? "" : "mono", text: s.walk_from }), ` across ${r.gammas.length} dephasing rates`))),
     series.length > 1 ? legend(series, {}) : null,
     el("div", { class: "chart-wrap", id: chart.id }),
     statsRow(st, "transport"),
@@ -411,8 +410,8 @@ function mapCard(r) {
           `${fromActive ? " (the best-AUC rate)" : " (the transport peak)"}. Darker means more signal. Residues sit at their 3D positions projected onto the protein's two main axes; lines are contacts.`))),
     el("div", { class: "map-legend" },
       el("span", { class: "ramp" }, el("span", { class: "mono", text: fmt(lo) }), el("span", { class: "ramp-bar" }), el("span", { class: "mono", text: fmt(hi) })),
-      el("span", { class: "ring-key" }, ringKey("source"), el("span", { text: fromActive ? "active site" : `source ${r.summary.source}` })),
-      el("span", { class: "ring-key" }, ringKey("other"), el("span", { text: fromActive ? "known allosteric" : `farthest ${r.summary.target_farthest}` }))),
+      el("span", { class: "ring-key" }, ringKey("source"), el("span", { text: fromActive ? "active site" : `start ${r.summary.walk_from}` })),
+      fromActive ? el("span", { class: "ring-key" }, ringKey("other"), el("span", { text: "known allosteric" })) : null),
     el("div", { class: "map-wrap", id: "map" }));
 }
 
@@ -453,12 +452,6 @@ function drawMap() {
   const ring = (i, dashed) => svg("circle", { cx: P[i][0], cy: P[i][1], r: rad + 4, fill: "none", stroke: dashed ? "#6b6b6b" : "#161616",
     "stroke-width": 1.4, "stroke-dasharray": dashed ? "3 2.5" : "none" }, rg);
   mp.nodes.forEach((n, i) => { if (n.role === "source") ring(i, false); else if (n.role === "allosteric") ring(i, true); });
-  if (mp.target !== null && mp.target !== undefined) {
-    ring(mp.target, true);
-    const i = mp.target, right = P[i][0] < W - 90;
-    svg("text", { x: P[i][0] + (right ? rad + 9 : -rad - 9), y: P[i][1] + 3.5, "text-anchor": right ? "start" : "end", "font-size": 11,
-      fill: "#3a3a3a", "paint-order": "stroke", stroke: "#fff", "stroke-width": 3, text: mp.nodes[i].id }, root);
-  }
 
   const hit = svg("rect", { x: 0, y: 0, width: W, height: H, fill: "transparent" }, root);
   let active = -1;
@@ -473,7 +466,7 @@ function drawMap() {
     edgesOf[i].forEach((k) => edgeEls[k].setAttribute("stroke", "#9a9a9a"));
     const n = mp.nodes[i];
     const role = n.role === "source" ? (mp.from === "active site" ? "  ·  active site" : "  ·  source")
-      : n.role === "allosteric" ? "  ·  known allosteric" : i === mp.target ? "  ·  farthest" : "";
+      : n.role === "allosteric" ? "  ·  known allosteric" : "";
     showTip(e.clientX, e.clientY, `${n.id}  ${n.resname}${role}`,
       [{ value: fmt(n.score, 4), label: "signal" }, { value: String(n.degree), label: "contacts" }]);
   }
@@ -513,22 +506,6 @@ function rankingCard(r) {
         el("th", { class: "num", text: "Signal" }), el("th", { class: "num", text: "Contacts" }), labelled ? el("th", { text: "Known" }) : null)),
       el("tbody", {}, rows))),
     el("div", { class: "btn-row" }, download(r.files.ranking_csv, `Full ranking, ${r.ranking_total} residues`, "CSV")));
-}
-
-/* ---------- sensitivity ---------- */
-function sensitivityCard(r) {
-  const rows = r.sensitivity, withAuc = rows.some((x) => x.auc_verdict);
-  return el("section", { class: "card" },
-    el("div", { class: "card-head" }, el("div", {},
-      el("h3", { class: "card-title", text: "Sensitivity check" }),
-      el("p", { class: "card-sub", text: "The same analysis under other reasonable settings. A finding worth reporting should not flip here." }))),
-    el("div", { class: "table-scroll" }, el("table", {},
-      el("thead", {}, el("tr", {}, el("th", { text: "Variant" }), el("th", { text: "Transport" }), el("th", { class: "num", text: "Peak γ" }),
-        el("th", { class: "num", text: "Gain" }), withAuc ? [el("th", { text: "AUC" }), el("th", { class: "num", text: "Best AUC" }), el("th", { class: "num", text: "at γ" })] : null)),
-      el("tbody", {}, rows.map((x) => el("tr", {}, el("td", { text: x.variant }), el("td", { text: x.transport_verdict }),
-        el("td", { class: "num", text: fmtGamma(x.transport_peak_gamma) }), el("td", { class: "num", text: fmt(x.transport_gain, 4) }),
-        withAuc ? [el("td", { text: x.auc_verdict }), el("td", { class: "num", text: fmt(x.auc_peak) }), el("td", { class: "num", text: fmtGamma(x.auc_peak_gamma) })] : null))))),
-    el("div", { class: "btn-row" }, download(r.files.sensitivity_csv, "Sensitivity table", "CSV")));
 }
 
 /* ---------- downloads + reproducibility ---------- */

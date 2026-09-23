@@ -63,7 +63,7 @@ def parse_options(form):
         if not active or not allosteric:
             raise UserError("Custom labels need both active-site and allosteric residues, e.g. A:57,A:102.")
     return {"source": source or None, "chains": chains or None, "site_energy": site_energy, "scale": scale,
-            "qmod": not flag("no_qmod"), "control": flag("control"), "sensitivity": flag("sensitivity"),
+            "qmod": not flag("no_qmod"), "control": flag("control"),
             "labels": "none" if mode == "none" else "auto", "active": active, "allosteric": allosteric}
 
 
