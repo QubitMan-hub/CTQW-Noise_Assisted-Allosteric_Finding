@@ -1,5 +1,5 @@
 "use strict";
-/* The QubitMen badge, redrawn as a crisp vector from the hand-made original:
+/* The QubitMan badge, redrawn as a crisp vector from the hand-made original:
    a grey disc, a qubit wave with scattered noise dots, the name, two ring dots and
    circuit traces converging from both sides. Colours come from CSS variables, so the
    badge follows the light/dark theme. */
@@ -26,14 +26,14 @@ const LOGO = (() => {
   ];
   const tr = traces.map((d) => `<path d="${d}"/>`).join("");
 
-  function svg(size = 96, title = "QubitMen") {
+  function svg(size = 96, title = "QubitMan") {
     return `<svg class="logo-svg" viewBox="0 0 200 200" width="${size}" height="${size}" role="img" aria-label="${title}">
   <circle class="lg-disc" cx="100" cy="100" r="97"/>
   <circle class="lg-rim" cx="100" cy="100" r="92.5" fill="none" stroke-width="1"/>
   <polyline class="lg-line" points="${wave.join(" ")}" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
   <g class="lg-noise">${noise.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join("")}</g>
   <text class="lg-text" x="100" y="83" text-anchor="middle" font-size="29">Qubit</text>
-  <text class="lg-text" x="100" y="112" text-anchor="middle" font-size="29">Men</text>
+  <text class="lg-text" x="100" y="112" text-anchor="middle" font-size="29">Man</text>
   <circle class="lg-ring" cx="47" cy="92" r="5.5" stroke-width="2.2"/>
   <circle class="lg-ring" cx="153" cy="92" r="5.5" stroke-width="2.2"/>
   <g class="lg-line" fill="none" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
