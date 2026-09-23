@@ -100,6 +100,7 @@ document.querySelectorAll('input[name="labels"]').forEach((r) => r.addEventListe
   $("#custom-labels").hidden = form.labels.value !== "custom";
 }));
 
+const NO_SERVER = "Could not reach the local server. Is web/app.py still running?";
 function showError(msg) { const e = $("#error"); e.textContent = msg; e.hidden = false; }
 function clearError() { $("#error").hidden = true; }
 
@@ -135,9 +136,9 @@ form.addEventListener("submit", async (e) => {
     let body;
     try { body = await res.json(); } catch { body = { error: `The server answered ${res.status} without a result.` }; }
     if (!res.ok || body.error) showError(body.error || "The run failed.");
-    else { renderResults(body); loadRecent(body.run_id); loadTable(); }
+    else { activeRun = body.run_id; renderResults(body); loadTable(); }
   } catch {
-    showError("Could not reach the local server. Is web/app.py still running?");
+    showError(NO_SERVER);
   } finally {
     clearInterval(timer);
     stopLoadingFun();
@@ -171,6 +172,7 @@ function verdictText(stats, what) {
 
 /* ---------- plain-language help ---------- */
 function fmtP(p) { return p == null ? "–" : p < 0.001 ? "< 0.001" : p.toFixed(p < 0.01 ? 3 : 2); }
+const mark = (kind) => el("span", { class: "tk-mark " + kind, text: kind });   // yes / partly / no
 function guide(items) {
   return el("details", { class: "fold guide" }, el("summary", { text: "How to read this" }),
     el("ul", { class: "guide-list" }, items.map(([lead, rest]) => el("li", {}, el("strong", { text: lead }), " " + rest))));
@@ -179,7 +181,6 @@ function guide(items) {
 // the run's answers to the questions people actually ask, from its own numbers
 function takeaways(r) {
   const out = [], t = r.transport, a = r.allosteric;
-  const mark = (kind) => el("span", { class: "tk-mark " + kind, text: kind === "yes" ? "yes" : kind === "no" ? "no" : "partly" });
   const line = (kind, q, a2) => out.push(el("li", {}, mark(kind), el("div", {}, el("div", { class: "tk-q", text: q }), el("div", { class: "tk-a", text: a2 }))));
   if (a && a.adjusted) {
     const d = a.adjusted, st = d.stats, best = st.peak_value, sig = d.significance, pv = sig ? sig.p_value : null;
@@ -284,35 +285,38 @@ function controlNote(ctrl, st) {
       ? " A hump that random energies reproduce is not specific to the hydropathy model." : "");
 }
 
-function aucCard(r, blk, o) {
-  const a = r.allosteric, st = blk.stats;
-  const series = [{ values: blk.auc, label: `${r.summary.site_energy} site energies`, style: "main" }];
-  if (blk.control) series.push({ values: blk.control.mean, sd: blk.control.sd, label: "random energies (mean ± sd)", style: "control" });
+// one chart card: a curve over γ, its random-energy band, baselines, help and downloads
+function curveCard(r, o) {
+  const st = o.stats;
+  const series = [{ values: o.values, label: `${r.summary.site_energy} site energies`, style: "main" }];
+  if (o.control) series.push({ values: o.control.mean, sd: o.control.sd, label: "random energies (mean ± sd)", style: "control" });
+  const auc = o.baselines !== null, baselines = o.baselines || {};
   const chart = { id: o.id, gammas: r.gammas, series, yLabel: o.yLabel, peakGamma: st.peak_gamma,
-    baselines: Object.entries(blk.baselines).map(([k, v]) => ({ value: v, label: k })), chance: 0.5, auc: true, digits: 3 };
+    baselines: Object.entries(baselines).map(([k, v]) => ({ value: v, label: k })), chance: auc ? 0.5 : null, auc, digits: auc ? 3 : 4 };
   charts.push(chart);
   return el("section", { class: "card" },
     el("div", { class: "card-head" },
       el("div", {},
         el("h3", { class: "card-title", text: o.title }),
-        el("p", { class: "card-sub", text: o.sub }))),
-    legend(series, blk.baselines),
+        el("p", { class: "card-sub" }, o.sub))),
+    series.length > 1 || auc ? legend(series, baselines) : null,
     el("div", { class: "chart-wrap", id: chart.id }),
-    statsRow(st, "auc"),
-    el("div", { class: "metric-row" }, Object.entries(blk.baselines).map(([k, v]) => el("span", {}, `baseline: ${k}`, el("strong", { text: fmt(v) })))),
+    statsRow(st, auc ? "auc" : "transport"),
+    auc ? el("div", { class: "metric-row" }, Object.entries(baselines).map(([k, v]) => el("span", {}, `baseline: ${k}`, el("strong", { text: fmt(v) })))) : null,
     o.extra || null,
-    controlNote(blk.control, st),
-    o.guide ? guide(o.guide) : null,
+    controlNote(o.control, st),
+    guide(o.guide),
     el("div", { class: "btn-row" },
-      download(r.files[o.tag + "_png"], "Download figure", "PNG 300 dpi", true),
+      download(r.files[o.tag + "_png"], "Download figure", "PNG 300 dpi", auc || !r.allosteric),
       download(r.files[o.tag + "_svg"], "Figure", "SVG"),
       download(r.files[o.tag + "_csv"], "Data", "CSV")),
-    dataTable(r.gammas, series, 3));
+    dataTable(r.gammas, series, chart.digits));
 }
 
 function allostericCard(r) {
   const a = r.allosteric, miss = [...a.missing.active, ...a.missing.allosteric];
-  return aucCard(r, a, { id: "chart-allo", tag: "allosteric", yLabel: "ROC AUC, allosteric residues",
+  return curveCard(r, { values: a.auc, stats: a.stats, control: a.control, baselines: a.baselines,
+    id: "chart-allo", tag: "allosteric", yLabel: "ROC AUC, allosteric residues",
     title: "Allosteric recovery versus noise",
     guide: [
       ["The solid line:", "for each noise level, how well the signal a residue receives picks out the known allosteric residues. 0.5 is a coin flip, 1.0 would put every allosteric residue first."],
@@ -327,7 +331,8 @@ function allostericCard(r) {
 
 function adjustedCard(r) {
   const d = r.allosteric.adjusted;
-  return aucCard(r, d, { id: "chart-adj", tag: "adjusted", yLabel: "ROC AUC, same distance",
+  return curveCard(r, { values: d.auc, stats: d.stats, control: d.control, baselines: d.baselines,
+    id: "chart-adj", tag: "adjusted", yLabel: "ROC AUC, same distance",
     title: "Beyond distance",
     extra: d.significance ? el("p", { class: "note" }, "Significance: ", el("strong", { text: `p = ${fmtP(d.significance.p_value)}` }),
       `. The allosteric labels were shuffled within each distance group ${d.significance.n_perm.toLocaleString()} times, and each time the best score over all noise levels was taken, so picking the best γ is accounted for (shuffles reach ${fmt(d.significance.null_95)} one time in twenty). Classical random walk: best ${fmt(r.allosteric.classical.significance_adjusted.observed_best)}, p = ${fmtP(r.allosteric.classical.significance_adjusted.p_value)}.`) : null,
@@ -343,33 +348,17 @@ function adjustedCard(r) {
 }
 
 function transportCard(r) {
-  const t = r.transport, st = t.stats, s = r.summary;
-  const series = [{ values: t.distal_mean, label: `${s.site_energy} site energies`, style: "main" }];
-  if (t.control) series.push({ values: t.control.mean, sd: t.control.sd, label: "random energies (mean ± sd)", style: "control" });
-  const chart = { id: "chart-transport", gammas: r.gammas, series, yLabel: "signal reaching distal residues", peakGamma: st.peak_gamma,
-    baselines: [], chance: null, auc: false, digits: 4 };
-  charts.push(chart);
-  return el("section", { class: "card" },
-    el("div", { class: "card-head" },
-      el("div", {},
-        el("h3", { class: "card-title", text: "Transport versus noise" }),
-        el("p", { class: "card-sub" }, "Mean signal reaching the far part of the network from ",
-          el("span", { class: s.walk_from === "active site" ? "" : "mono", text: s.walk_from }), ` across ${r.gammas.length} dephasing rates`))),
-    series.length > 1 ? legend(series, {}) : null,
-    el("div", { class: "chart-wrap", id: chart.id }),
-    statsRow(st, "transport"),
-    controlNote(t.control, st),
-    guide([
+  const t = r.transport, s = r.summary;
+  return curveCard(r, { values: t.distal_mean, stats: t.stats, control: t.control, baselines: null,
+    id: "chart-transport", tag: "hump", yLabel: "signal reaching distal residues", title: "Transport versus noise",
+    sub: ["Mean signal reaching the far part of the network from ",
+      el("span", { class: s.walk_from === "active site" ? "" : "mono", text: s.walk_from }), ` across ${r.gammas.length} dephasing rates`],
+    guide: [
       ["The solid line:", "how much of the walker's signal reaches the far part of the protein (residues at least half the network's width away), for each noise level."],
       ["Left edge, γ = 0:", "a perfectly quantum walk. Waves interfere and can get stuck near the start."],
       ["Right edge, large γ:", "so much noise that the walker keeps getting \u2018measured\u2019 and barely moves (the quantum Zeno effect)."],
       ["A hump in between:", "a little noise breaks up the interference and helps the signal spread. This happens in almost any disordered network, which is why the grey random-energy band matters."],
-    ]),
-    el("div", { class: "btn-row" },
-      download(r.files.hump_png, "Download figure", "PNG 300 dpi", !r.allosteric),
-      download(r.files.hump_svg, "Figure", "SVG"),
-      download(r.files.hump_csv, "Data", "CSV")),
-    dataTable(r.gammas, series, 4));
+    ] });
 }
 
 function legend(series, baselines) {
@@ -476,7 +465,7 @@ function drawChart(c) {
     const box = root.getBoundingClientRect();
     const px = cx ?? box.left + (X(gammas[i]) / W) * box.width, py = cy ?? box.top + (m.t / H) * box.height + 40;
     showTip(px, py, `γ = ${fmtGamma(gammas[i])}`, c.series.map((s) => ({ key: s.style === "control" ? "dashed" : "solid",
-      value: fmt(s.values[i], c.digits) + (s.sd ? ` ± ${fmt(s.sd[i], c.digits)}` : ""), label: s.style === "control" ? "control" : r0(c) })));
+      value: fmt(s.values[i], c.digits) + (s.sd ? ` ± ${fmt(s.sd[i], c.digits)}` : ""), label: s.style === "control" ? "control" : c.auc ? "AUC" : "signal" })));
   }
   overlay.addEventListener("pointermove", (e) => {
     const box = root.getBoundingClientRect(), x = ((e.clientX - box.left) / box.width) * W;
@@ -493,12 +482,16 @@ function drawChart(c) {
     setActive(active < 0 ? start : Math.min(gammas.length - 1, Math.max(0, active + (e.key === "ArrowRight" ? 1 : -1))));
   });
 }
-const r0 = (c) => (c.auc ? "AUC" : "signal");
 
 /* ---------- residue signal map ---------- */
+// shading range of the map: the start residues are excluded, they always hold the most signal
+function scoreRange(mp) {
+  const others = mp.nodes.filter((n) => n.role !== "source").map((n) => n.score);
+  return [Math.min(...others), Math.max(...others)];
+}
+
 function mapCard(r) {
-  const mp = r.map, others = mp.nodes.filter((n) => n.role !== "source").map((n) => n.score);
-  const lo = Math.min(...others), hi = Math.max(...others);
+  const mp = r.map, [lo, hi] = scoreRange(mp);
   const ringKey = (kind) => {
     const s = svg("svg", { width: 18, height: 18, viewBox: "0 0 18 18" });
     svg("circle", { cx: 9, cy: 9, r: 4, fill: C("--ctrl") }, s);
@@ -541,8 +534,7 @@ function drawMap() {
   const sx = Math.min(inner, (H - 2 * pad) / Math.max(mp.aspect, 1e-3));
   const offX = pad + (inner - sx) / 2;
   const P = mp.nodes.map((n) => [offX + n.x * sx, pad + n.y * sx]);
-  const others = mp.nodes.filter((n) => n.role !== "source").map((n) => n.score);
-  const lo = Math.min(...others), hi = Math.max(...others);
+  const [lo, hi] = scoreRange(mp);
   const rad = Math.max(3, Math.min(7, 150 / Math.sqrt(N)));
   const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img",
     "aria-label": `Contact network of ${N} residues shaded by signal received` }, host);
@@ -695,12 +687,16 @@ const FACTS = [
   "With no noise, the walk is solved exactly by diagonalising the network's Hamiltonian; with noise, it is stepped through time.",
   "Every noise level runs as its own job, so more CPU cores means a faster walk.",
 ];
-let factTimer = null, factIdx = Math.floor(Math.random() * FACTS.length);
-function showFact() {
-  const f = $("#fact");
-  f.style.opacity = "0";
-  setTimeout(() => { f.textContent = FACTS[factIdx % FACTS.length]; factIdx += 1; f.style.opacity = "1"; }, 250);
+function factRotator(sel, fadeMs) {       // each call fades the next fact in
+  let i = Math.floor(Math.random() * FACTS.length);
+  return () => {
+    const f = $(sel);
+    f.style.opacity = "0";
+    setTimeout(() => { f.textContent = FACTS[i++ % FACTS.length]; f.style.opacity = "1"; }, fadeMs);
+  };
 }
+let factTimer = null;
+const showFact = factRotator("#fact", 250);
 function startLoadingFun() {
   walkerBar.start();
   showFact(); clearInterval(factTimer); factTimer = setInterval(showFact, 6000);
@@ -836,49 +832,34 @@ function ago(iso) {
 }
 function verdictShort(v, g) { return v === "hump" ? `hump at γ ${fmtGamma(g)}` : v === "quantum" ? "best at γ 0" : "best most dephased"; }
 let activeRun = null;
-async function loadRecent(markId) {
-  if (markId) activeRun = markId;
-  let items = [];
-  try { items = await (await fetch("/api/runs")).json(); } catch { return; }
-  const list = $("#recent");
-  if (!Array.isArray(items) || !items.length) {
-    list.replaceChildren(el("li", { class: "recent-empty", text: "Your walks show up here. Click one to reopen its results instantly." }));
-    return;
-  }
-  list.replaceChildren(...items.map((it) => {
-    const main = it.auc ? `AUC ${fmt(it.auc.best)} · ${verdictShort(it.transport.verdict, it.transport.peak_gamma)}`
-      : verdictShort(it.transport.verdict, it.transport.peak_gamma);
+function renderRecent() {                  // the newest walks whose results are still stored
+  const items = tableRows.filter((it) => it.stored).slice(0, 15);
+  $("#recent").replaceChildren(...(items.length ? items.map((it) => {
+    const trans = verdictShort(it.transport_verdict, it.transport_gamma);
     const btn = el("button", { type: "button", class: "recent-item" + (it.run_id === activeRun ? " active" : ""),
       title: `Reopen ${it.name}` },
       el("span", { class: "recent-id", text: it.name.slice(0, 8) }),
-      el("span", { class: "recent-main", text: main }),
+      el("span", { class: "recent-main", text: it.raw_best != null ? `AUC ${fmt(it.raw_best)} · ${trans}` : trans }),
       el("span", { class: "recent-sub", text: `${it.residues} res · ${it.control ? "with control · " : ""}${ago(it.finished_utc)}` }));
     btn.addEventListener("click", () => reopen(it.run_id));
     return el("li", {}, btn);
-  }));
+  }) : [el("li", { class: "recent-empty", text: "Your walks show up here. Click one to reopen its results instantly." })]));
 }
 async function reopen(id) {
   clearError();
   try {
     const res = await fetch(`/api/runs/${id}`);
     const body = await res.json();
-    if (!res.ok || body.error) { showError(body.error || "Could not reopen that walk."); loadRecent(); return; }
+    if (!res.ok || body.error) { showError(body.error || "Could not reopen that walk."); loadTable(); return; }
     activeRun = id;
     renderResults(body);
-    document.querySelectorAll(".recent-item").forEach((b) => b.classList.remove("active"));
-    loadRecent();
-  } catch { showError("Could not reach the local server. Is web/app.py still running?"); }
+    renderRecent();
+  } catch { showError(NO_SERVER); }
 }
-let sideIdx = Math.floor(Math.random() * FACTS.length);
-function sideFact() {
-  const f = $("#side-fact");
-  f.style.opacity = "0";
-  setTimeout(() => { f.textContent = FACTS[sideIdx % FACTS.length]; sideIdx += 1; f.style.opacity = "1"; }, 200);
-}
+const sideFact = factRotator("#side-fact", 200);
 $("#next-fact").addEventListener("click", sideFact);
 sideFact();
 setInterval(() => { if (!document.hidden) sideFact(); }, 12000);
-loadRecent();
 
 /* ---------- Walk | Table ---------- */
 let tableRows = [], tableSort = { key: "finished_utc", dir: -1 }, openRow = null;
@@ -910,6 +891,7 @@ async function loadTable() {
   try { tableRows = await (await fetch("/api/table")).json(); } catch { return; }
   if (!Array.isArray(tableRows)) tableRows = [];
   $("#table-count").textContent = tableRows.length ? String(tableRows.length) : "";
+  renderRecent();
   if (!$("#view-table").hidden) renderTable();
 }
 
@@ -963,7 +945,7 @@ function renderTable() {
       el("td", { class: "num" + (r.p_value != null && r.p_value < 0.05 ? " strong-cell" : ""), text: r.p_value != null ? fmtP(r.p_value) : dash }),
       el("td", { class: "num", text: r.classical != null ? fmt(r.classical) : dash }),
       el("td", {}, r.beyond_verdict === "hump" && r.beyond_gain >= 0.01 ? el("span", { class: "chip-mini solid", text: `γ ${fmtGamma(r.beyond_gamma)}` }) : dash),
-      el("td", {}, el("span", { class: "chip-mini" + (r.transport_verdict === "hump" ? "" : ""), text: verdictShort(r.transport_verdict, r.transport_gamma) })),
+      el("td", {}, el("span", { class: "chip-mini", text: verdictShort(r.transport_verdict, r.transport_gamma) })),
       el("td", { text: r.control ? "yes" : "no" }),
       el("td", { text: ago(r.finished_utc) }));
     tr.addEventListener("click", () => { openRow = isOpen ? null : r.run_id; renderTable(); });
@@ -977,7 +959,7 @@ $("#table-labelled").addEventListener("change", renderTable);
 // the same plain-language answers as the summary card, from the row's numbers
 function rowDescription(r) {
   const lines = [];
-  const say = (kind, text) => lines.push(el("li", {}, el("span", { class: "tk-mark " + kind, text: kind === "yes" ? "yes" : kind === "no" ? "no" : "partly" }), el("span", { text })));
+  const say = (kind, text) => lines.push(el("li", {}, mark(kind), el("span", { text })));
   if (r.beyond != null) {
     const sig = r.p_value != null && r.p_value < 0.05;
     say(r.beyond >= 0.6 && (r.p_value == null || sig) ? "yes" : r.beyond > 0.55 ? "partly" : "no",
@@ -1018,7 +1000,7 @@ async function openFromTable(r) {
     pdbInput.value = r.name;
     pdbInput.dispatchEvent(new Event("input"));
   }
-  const ctl = $("#control"); if (ctl) ctl.checked = !!r.control;
+  $("#control").checked = !!r.control;
   showError(`${r.name}'s full results were cleared (only the last 30 are kept). ${r.source === "pdb" ? "The form is filled in; press Run the walk to redo it." : "Upload the file again to redo it."}`);
   form.scrollIntoView({ behavior: "smooth", block: "start" });
 }

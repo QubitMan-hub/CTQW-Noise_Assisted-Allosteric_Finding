@@ -22,6 +22,7 @@ import numpy as np
 import networkx as nx
 from scipy import sparse
 from scipy.integrate import RK45
+from scipy.stats import rankdata
 
 _trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
 _THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
@@ -104,7 +105,7 @@ def run_walk(H, source_idx, gamma, tlist, rtol=1e-6, atol=1e-9):
     if gamma == 0:
         return _unitary_populations(H.toarray() if sparse.issparse(H) else H, sources, tlist)
     n = H.shape[0]
-    Hs = sparse.csr_matrix(H, dtype=complex) if sparse.issparse(H) else sparse.csr_matrix(np.asarray(H, dtype=complex))
+    Hs = sparse.csr_matrix(H, dtype=complex)
     diag = np.arange(n)
 
     def rhs(_t, y):
@@ -132,11 +133,6 @@ def run_walk(H, source_idx, gamma, tlist, rtol=1e-6, atol=1e-9):
             pop[:, i:j] = solver.dense_output()(tlist[i:j])[flat_diag]
             i = j
     return pop
-
-
-def populations_from_sources(H, source_indices, gamma, tlist):
-    """Walk from an equal mixture of several sources (one run, by linearity)."""
-    return run_walk(H, list(source_indices), gamma, tlist)
 
 
 def visiting_scores(pop_time, tlist):
@@ -207,18 +203,19 @@ def sweep_many(hams, jobs, tlist, workers=None):
     over worker processes (same numbers as a serial run, less wall time)."""
     tlist = np.asarray(tlist, dtype=float)
     out = [None] * len(jobs)
-    slow = []
-    for i, (key, src, g) in enumerate(jobs):
-        if g == 0:
-            out[i] = visiting_scores(run_walk(hams[key], src, 0.0, tlist), tlist)
-        else:
-            slow.append(i)
+
+    def run_here(i):
+        key, src, g = jobs[i]
+        out[i] = visiting_scores(run_walk(hams[key], src, g, tlist), tlist)
+
+    slow = [i for i, job in enumerate(jobs) if job[2] != 0]
+    for i in set(range(len(jobs))) - set(slow):
+        run_here(i)
     n = next(iter(hams.values())).shape[0] if hams else 0
     workers = safe_workers(n, workers)
     if workers == 1 or len(slow) <= 1:
         for i in slow:
-            key, src, g = jobs[i]
-            out[i] = visiting_scores(run_walk(hams[key], src, g, tlist), tlist)
+            run_here(i)
         return out
     # one BLAS thread per worker, otherwise the processes fight over the cores
     saved = {v: os.environ.get(v) for v in _THREAD_VARS}
@@ -237,8 +234,7 @@ def sweep_many(hams, jobs, tlist, workers=None):
         print("[note] worker processes unavailable; running the sweep serially.", file=sys.stderr)
         for i in slow:
             if out[i] is None:
-                key, src, g = jobs[i]
-                out[i] = visiting_scores(run_walk(hams[key], src, g, tlist), tlist)
+                run_here(i)
     finally:
         for v, old in saved.items():
             if old is None:
@@ -257,45 +253,21 @@ def sweep_scores(H, source_idx, gammas, tlist, workers=None):
 def roc_auc(scores, positive_mask):
     """ROC AUC via Mann-Whitney with tie handling. 0.5 random, 1.0 perfect, nan
     if no positives/negatives."""
-    scores = np.asarray(scores, dtype=float)
     pos = np.asarray(positive_mask, dtype=bool)
     n_pos, n_neg = int(pos.sum()), int((~pos).sum())
     if n_pos == 0 or n_neg == 0:
         return float("nan")
-    order = np.argsort(scores, kind="mergesort")
-    ranks = np.empty(len(scores))
-    ranks[order] = np.arange(1, len(scores) + 1)
-    s = scores[order]
-    i = 0
-    while i < len(s):                      # average ranks within ties
-        j = i
-        while j + 1 < len(s) and s[j + 1] == s[i]:
-            j += 1
-        if j > i:
-            ranks[order[i:j + 1]] = (ranks[order[i]] + ranks[order[j]]) / 2.0
-        i = j + 1
+    ranks = rankdata(np.asarray(scores, dtype=float))          # ties get their average rank
     return float((ranks[pos].sum() - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg))
-
-
-def sweep_auc(H, source_indices, positive_mask, eligible_mask, gammas, tlist, workers=None):
-    """AUC for recovering the positive residues at each gamma (eligible only)."""
-    scores = sweep_scores(H, list(source_indices), gammas, tlist, workers)
-    return np.array([roc_auc(s[eligible_mask], positive_mask[eligible_mask]) for s in scores])
 
 
 def distal_mask(G, nodes, source_ids, fraction=0.5):
     """Residues in the far part of the network from the source(s): hop distance at
     least ceil(fraction * eccentricity). Averaging transport over this set is far
     less arbitrary than a single 'farthest' residue. Returns (mask, min_hops)."""
-    source_ids = [source_ids] if isinstance(source_ids, str) else list(source_ids)
-    dist = {}
-    for s in source_ids:
-        for k, d in nx.single_source_shortest_path_length(G, s).items():
-            dist[k] = min(d, dist.get(k, d))
-    ecc = max(dist.values()) if dist else 0
-    min_hops = max(1, int(np.ceil(fraction * ecc)))
-    mask = np.array([dist.get(n, -1) >= min_hops for n in nodes], dtype=bool)
-    return mask, min_hops
+    dist = hop_distance(G, nodes, [source_ids] if isinstance(source_ids, str) else source_ids)
+    min_hops = max(1, int(np.ceil(fraction * max(dist.max(), 0))))
+    return dist >= min_hops, min_hops
 
 
 def hop_distance(G, nodes, source_ids):
@@ -328,17 +300,9 @@ def shell_percentile(scores, shells, n):
     """Each residue's score as a percentile among residues at the same distance
     from the source (ties averaged; 0..1; nan outside the shells). It keeps only
     what the score says beyond 'how close is this residue to the start'."""
-    out = np.full(n, np.nan)
+    scores, out = np.asarray(scores, dtype=float), np.full(n, np.nan)
     for g in shells:
-        v = np.asarray(scores, dtype=float)[g]
-        order = np.argsort(v, kind="mergesort")
-        ranks = np.empty(len(v))
-        ranks[order] = np.arange(len(v), dtype=float)
-        for u in np.unique(v):             # average ranks within ties
-            m = v == u
-            if m.sum() > 1:
-                ranks[m] = ranks[m].mean()
-        out[g] = (ranks + 0.5) / len(v)
+        out[g] = (rankdata(scores[g]) - 0.5) / len(g)          # ties get their average rank
     return out
 
 
@@ -371,15 +335,12 @@ def shell_permutation_test(score_rows, shells, positive, n_perm=10000, seed=0):
     (noise levels, or classical rates) is recomputed each time. Taking the best
     over rows in the null too makes p honest about having picked the best gamma."""
     idx = np.concatenate(shells)
-    n = int(np.max(idx)) + 1 if len(idx) else 0
     pos = np.asarray(positive, dtype=bool)
     n_pos = int(pos[idx].sum())
     n_neg = len(idx) - n_pos
     if n_pos == 0 or n_neg == 0:
         return None
-    from scipy.stats import rankdata
-    N = max(n, len(pos))
-    R = np.array([rankdata(shell_percentile(row, shells, N)[idx]) for row in score_rows], dtype=np.float32)
+    R = np.array([rankdata(shell_percentile(row, shells, len(pos))[idx]) for row in score_rows], dtype=np.float32)
     offset = n_pos * (n_pos + 1) / 2.0
     observed = (R[:, pos[idx]].sum(axis=1) - offset) / (n_pos * n_neg)
     rng = np.random.default_rng(seed)

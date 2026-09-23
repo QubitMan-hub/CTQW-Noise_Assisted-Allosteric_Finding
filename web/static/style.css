@@ -158,7 +158,6 @@ body {
 .metric-row strong { font: 600 13px var(--mono); color: var(--ink); margin-left: 6px; }
 td.known { text-align: center; }
 .dot-known { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
-.cite { margin-top: 12px; font-size: 12px; color: var(--faint); }
 
 .segmented { display: inline-flex; padding: 3px; background: var(--fill-2); border-radius: var(--radius-sm); gap: 2px; }
 .segmented label { position: relative; }
@@ -209,18 +208,6 @@ td.known { text-align: center; }
 .loading-title { font-weight: 600; }
 .loading-sub { color: var(--muted); font-size: 13px; }
 .elapsed { margin-left: auto; color: var(--muted); font-size: 13px; }
-.spinner {
-  width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--ink);
-  animation: spin 0.9s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.shimmer-block { display: grid; gap: 12px; margin-top: 24px; }
-.shimmer {
-  display: block; height: 12px; border-radius: 6px;
-  background: linear-gradient(90deg, var(--fill-2) 0%, var(--shim-b) 40%, var(--fill-2) 80%); background-size: 200% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
-}
-.shimmer.w60 { width: 60%; } .shimmer.w90 { width: 90%; } .shimmer.tall { height: 160px; border-radius: 10px; }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
 /* ---------- results ---------- */
@@ -354,7 +341,6 @@ pre.params {
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
-  .spinner { animation: spin 2.4s linear infinite !important; }
 }
 
 /* ---------- dark theme: the same greys, inverted ---------- */

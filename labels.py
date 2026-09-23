@@ -96,13 +96,12 @@ def resolve(inp, labels_arg="auto", active=None, allosteric=None, site=None, def
     if not rows:
         return None, (f"PDB id {pid} is not in the ALLO table" if pid else "no PDB id found for this structure"), []
     entries = [r["entry"] for r in rows]
+    row = rows[0]
     if site is not None:
         pick = [r for r in rows if r["entry"] == site or r["entry"].endswith(f"_{site}")]
         if not pick:
             raise ValueError(f"ALLO has no site '{site}' for {pid}; choose one of {', '.join(entries)}.")
         row = pick[0]
-    else:
-        row = rows[0]
     note = f"ALLO entry {row['entry']} ({row['protein']})"
     if len(rows) > 1:
         note += f"; other sites for this PDB: {', '.join(e for e in entries if e != row['entry'])} (use --site)"

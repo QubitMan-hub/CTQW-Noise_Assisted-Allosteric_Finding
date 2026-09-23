@@ -166,5 +166,5 @@ const PX = (() => {
     };
   }
 
-  return { wordmark, icons, background, walkerBar, drawBitmap, reduced, ICONS };
+  return { wordmark, icons, background, walkerBar, drawBitmap, ICONS };
 })();

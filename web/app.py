@@ -23,6 +23,9 @@ WEB_RESULT = "web_result.json"
 # one summary line per finished walk, kept for good (full results are pruned after
 # KEEP_RUNS runs, the table row stays). Lives next to the runs, never in git.
 TABLE = os.path.join(RUNS, "table.jsonl")
+RUN_ID = re.compile(r"[0-9a-f]{12}")                 # the folder name of one walk under web/runs/
+PDB_ID = re.compile(r"[0-9][A-Za-z0-9]{3}")
+PDB_UNREACHABLE = {"error": "Could not reach the Protein Data Bank. Check your internet connection."}
 # one walk at a time: each walk already uses every CPU core, and two at once
 # would compete for cores and memory (easy to trigger with a second tab)
 RUN_LOCK = threading.Lock()
@@ -39,7 +42,7 @@ class UserError(Exception):
 def prune_runs():
     if not os.path.isdir(RUNS):
         return
-    dirs = sorted((os.path.join(RUNS, d) for d in os.listdir(RUNS) if re.fullmatch(r"[0-9a-f]{12}", d)),
+    dirs = sorted((os.path.join(RUNS, d) for d in os.listdir(RUNS) if RUN_ID.fullmatch(d)),
                   key=os.path.getmtime, reverse=True)
     for d in dirs[KEEP_RUNS:]:
         shutil.rmtree(d, ignore_errors=True)
@@ -122,7 +125,7 @@ def _run():
                 raise UserError("The uploaded file is empty.")
             prefix = re.sub(r"[^A-Za-z0-9_.-]", "_", stem)[:40] or "protein"
         else:
-            if not re.fullmatch(r"[0-9][A-Za-z0-9]{3}", pdb_id):
+            if not PDB_ID.fullmatch(pdb_id):
                 raise UserError("A PDB id is 4 characters starting with a digit, for example 1A8O.")
             inp = prefix = pdb_id.upper()
         try:
@@ -257,12 +260,12 @@ def pdb_info(pdb_id):
 
 @app.get("/api/info/<pdb_id>")
 def api_info(pdb_id):
-    if not re.fullmatch(r"[0-9][A-Za-z0-9]{3}", pdb_id):
+    if not PDB_ID.fullmatch(pdb_id):
         return jsonify({"error": "A PDB id is 4 characters starting with a digit."}), 400
     try:
         info = pdb_info(pdb_id)
     except Exception:
-        return jsonify({"error": "Could not reach the Protein Data Bank. Check your internet connection."}), 502
+        return jsonify(PDB_UNREACHABLE), 502
     if info is None:
         return jsonify({"error": f"{pdb_id.upper()} is not a PDB entry."}), 404
     return jsonify(info)
@@ -280,7 +283,7 @@ def api_random():
         try:
             info = pdb_info(pid)
         except Exception:
-            return jsonify({"error": "Could not reach the Protein Data Bank. Check your internet connection."}), 502
+            return jsonify(PDB_UNREACHABLE), 502
         if info is None or not info["chains"]:
             continue                                   # not an entry, or no protein in it
         if known or 40 <= info["run_residues"] <= 350:
@@ -288,33 +291,13 @@ def api_random():
     return jsonify({"error": "No luck this time. Roll again."}), 503
 
 
-# ---------------------------------------------------------------- recent walks
+# ---------------------------------------------------------------- stored walks and the table
 def _run_dirs():
     if not os.path.isdir(RUNS):
         return []
-    dirs = [d for d in os.listdir(RUNS) if re.fullmatch(r"[0-9a-f]{12}", d)
+    dirs = [d for d in os.listdir(RUNS) if RUN_ID.fullmatch(d)
             and os.path.isfile(os.path.join(RUNS, d, WEB_RESULT))]
     return sorted(dirs, key=lambda d: os.path.getmtime(os.path.join(RUNS, d, WEB_RESULT)), reverse=True)
-
-
-@app.get("/api/runs")
-def api_runs():
-    """The most recent finished walks, newest first, with a one-line summary each."""
-    items = []
-    for d in _run_dirs()[:15]:
-        try:
-            with open(os.path.join(RUNS, d, WEB_RESULT)) as f:
-                r = json.load(f)
-        except (OSError, ValueError):
-            continue
-        t, a = r["transport"]["stats"], r.get("allosteric")
-        items.append({"run_id": d, "name": r["name"], "finished_utc": r.get("finished_utc"),
-                      "residues": r["summary"]["residues"], "elapsed_s": r.get("elapsed_s"),
-                      "control": bool(r["transport"].get("control")),
-                      "transport": {"verdict": t["verdict"], "peak_gamma": t["peak_gamma"]},
-                      "auc": ({"best": a["stats"]["peak_value"], "peak_gamma": a["stats"]["peak_gamma"],
-                               "verdict": a["stats"]["verdict"]} if a else None)})
-    return jsonify(items)
 
 
 def table_row(r, run_id, source):
@@ -382,7 +365,7 @@ def api_table():
 
 @app.get("/api/runs/<run_id>")
 def api_run_result(run_id):
-    if not re.fullmatch(r"[0-9a-f]{12}", run_id):
+    if not RUN_ID.fullmatch(run_id):
         abort(404)
     path = os.path.join(RUNS, run_id, WEB_RESULT)
     if not os.path.isfile(path):
@@ -399,7 +382,7 @@ def too_large(_e):
 
 @app.get("/runs/<run_id>/<path:name>")
 def run_file(run_id, name):
-    if not re.fullmatch(r"[0-9a-f]{12}", run_id) or "/" in name or name.startswith("."):
+    if not RUN_ID.fullmatch(run_id) or "/" in name or name.startswith("."):
         abort(404)
     return send_from_directory(os.path.join(RUNS, run_id), name, as_attachment=True)
 

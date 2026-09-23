@@ -59,16 +59,10 @@ def standard_resname(residue):
 def pick_representative_atom(residue, method):
     """(name, coord) for the residue's representative atom, or None. 'cb' uses
     CB, falling back to CA (glycine has no CB); 'ca' uses CA."""
-    def coord(a):
-        return residue[a].get_coord() if a in residue else None
-    if method == "ca":
-        c = coord("CA")
-        return ("CA", c) if c is not None else None
-    c = coord("CB")
-    if c is not None:
-        return ("CB", c)
-    c = coord("CA")
-    return ("CA", c) if c is not None else None
+    for name in ("CA",) if method == "ca" else ("CB", "CA"):
+        if name in residue:
+            return name, residue[name].get_coord()
+    return None
 
 
 def collect_residues(structure, model_index, chains_wanted):
@@ -111,7 +105,7 @@ def build_by_representative(residues, method, cutoff, min_seq_sep):
     labels, coords, kept = [], [], []
     for info in residues:
         rep = pick_representative_atom(info["residue"], method)
-        if rep and rep[1] is not None:
+        if rep:
             labels.append(node_label(info))
             coords.append(rep[1])
             kept.append(info)
@@ -148,7 +142,7 @@ def build_by_heavy_atoms(residues, cutoff, min_seq_sep):
     coords = []
     for info in residues:
         rep = pick_representative_atom(info["residue"], "ca")
-        coords.append(rep[1] if rep and rep[1] is not None else (np.nan,) * 3)
+        coords.append(rep[1] if rep else (np.nan,) * 3)
     coords = np.asarray(coords, dtype=float)
     return labels, residues, coords, [(labels[i], labels[j], d) for (i, j), d in edges.items()]
 

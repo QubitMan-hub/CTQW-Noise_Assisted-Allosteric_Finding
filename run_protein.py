@@ -23,9 +23,10 @@ add the ROC AUC test; without them you still get the ranked candidate residues.
 With no active site at all, the walk starts at --source (default: the
 most-connected residue) and gives the transport curve and ranking.
 The null model runs by default: the same sweep with random site energies over
-several seeds, drawn as a band (--no-control skips it for a quick look). Sweeps run in parallel over the CPU cores.
+several seeds, drawn as a band (--no-control skips it for a quick look).
+Sweeps run in parallel over the CPU cores.
 """
-import argparse, hashlib, json, os, subprocess, sys, time
+import argparse, csv, hashlib, json, os, subprocess, sys, time
 import numpy as np, networkx as nx
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -164,17 +165,15 @@ def jsonable(obj):
     return obj
 
 
-def _band(curves):
+def _control(gammas, curves, main_gain):
+    """Random-energy seeds as a mean +- sd band, and where the real hump's gain falls among theirs."""
     c = np.asarray(curves, dtype=float)
-    return c.mean(axis=0), c.std(axis=0)
-
-
-def _gain_rank(main_gain, control_gains):
-    """Where the real hump's gain falls among the random-energy seeds."""
-    cg = np.asarray(control_gains, dtype=float)
+    m = c.mean(axis=0)
+    cg = np.array([wc.hump_stats(gammas, x)["gain_abs"] for x in c])
     sd = float(cg.std())
-    return {"control_gains": [float(x) for x in cg], "exceeds_seeds": int((main_gain > cg).sum()),
-            "n_seeds": int(len(cg)), "z": (float((main_gain - cg.mean()) / sd) if sd > 0 else None)}
+    return {"mean": m.tolist(), "sd": c.std(axis=0).tolist(), "stats": wc.hump_stats(gammas, m),
+            "control_gains": cg.tolist(), "exceeds_seeds": int((main_gain > cg).sum()), "n_seeds": len(cg),
+            "z": float((main_gain - cg.mean()) / sd) if sd > 0 else None}
 
 
 # ---------------------------------------------------------------- the analysis
@@ -222,7 +221,8 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
     idx = {n: i for i, n in enumerate(nodes)}
     N = len(nodes)
     degree = dict(G.degree())
-    log(f"[network] {N} residues, {G.number_of_edges()} contacts, chains {sorted({n.split(':')[0] for n in nodes})}")
+    chains_used = sorted({n.split(":")[0] for n in nodes})
+    log(f"[network] {N} residues, {G.number_of_edges()} contacts, chains {chains_used}")
 
     if o["source"] and o["source"] not in idx:
         raise InputError(f"start residue {o['source']} is not in the network; ids look like {', '.join(nodes[:3])}.")
@@ -273,28 +273,21 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
             for k in range(int(o["control_seeds"])):
                 hams[f"rand{k}"] = wc.build_hamiltonian(A, resnames, "random", o["scale"], o["seed"] + k)
                 control_keys.append(f"rand{k}")
-    jobs, where = [], {}
-    def add(tag, key, src):
-        where[(tag, key)] = len(jobs)
-        jobs.extend((key, src, g) for g in gammas)
-    for key in ["main"] + control_keys:
-        add("walk", key, walk_src)
+    jobs = [(key, walk_src, g) for key in hams for g in gammas]
     log(f"[sweep] {len(jobs)} walks over {len(gammas)} dephasing rates"
         f"{' with ' + str(len(control_keys)) + ' random-energy seeds' if control_keys else ''}")
     flat = wc.sweep_many(hams, jobs, tlist, o["workers"])
-    block = lambda tag, key: np.array(flat[where[(tag, key)]: where[(tag, key)] + len(gammas)])
+    scores = {key: np.array(flat[i * len(gammas):(i + 1) * len(gammas)]) for i, key in enumerate(hams)}
 
     # 6) transport metrics
-    S = block("walk", "main")
+    S = scores["main"]
     transport = S[:, distal].mean(axis=1)
     t_stats = wc.hump_stats(gammas, transport)
     t_ctrl = None
     if control_keys:
-        curves = [block("walk", k)[:, distal].mean(axis=1) for k in control_keys]
-        m, s = _band(curves)
-        t_ctrl = {"mean": m.tolist(), "sd": s.tolist(), "stats": wc.hump_stats(gammas, m),
-                  "seed_verdicts": [wc.hump_stats(gammas, c)["verdict"] for c in curves],
-                  **_gain_rank(t_stats["gain_abs"], [wc.hump_stats(gammas, c)["gain_abs"] for c in curves])}
+        curves = [scores[k][:, distal].mean(axis=1) for k in control_keys]
+        t_ctrl = dict(_control(gammas, curves, t_stats["gain_abs"]),
+                      seed_verdicts=[wc.hump_stats(gammas, c)["verdict"] for c in curves])
 
     # 7) allosteric metrics
     a_res = None
@@ -307,8 +300,9 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         deg = np.array([degree[n] for n in nodes], dtype=float)
         # distance-adjusted: each residue compared only with residues equally far from the
         # active site, so the test measures what the walk adds beyond plain proximity
-        shells = wc.distance_shells(dist, el & (dist >= 0))
-        adj_auc = lambda sc: wc.roc_auc(wc.shell_percentile(sc, shells, N)[el & (dist >= 0)], pos[el & (dist >= 0)])
+        reach = el & (dist >= 0)
+        shells = wc.distance_shells(dist, reach)
+        adj_auc = lambda sc: wc.roc_auc(wc.shell_percentile(sc, shells, N)[reach], pos[reach])
         auc_adj = np.array([adj_auc(s) for s in S])
         adj_stats = wc.hump_stats(gammas, auc_adj)
         baselines = {"contact degree": wc.roc_auc(deg[el], pos[el]),
@@ -322,23 +316,19 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         baselines["classical walk, best rate"] = float(np.nanmax(c_raw))
         adj_baselines["classical walk, best rate"] = float(np.nanmax(c_adj))
         # significance: shuffle the allosteric labels within each distance shell
-        sig = wc.shell_permutation_test(S, shells, pos & el & (dist >= 0), n_perm=o["permutations"], seed=o["seed"])
-        c_sig = wc.shell_permutation_test(C, shells, pos & el & (dist >= 0), n_perm=o["permutations"], seed=o["seed"])
+        sig = wc.shell_permutation_test(S, shells, pos & reach, n_perm=o["permutations"], seed=o["seed"])
+        c_sig = wc.shell_permutation_test(C, shells, pos & reach, n_perm=o["permutations"], seed=o["seed"])
         classical = {"rates": list(CLASSICAL_RATES), "auc": c_raw.tolist(), "auc_adjusted": c_adj.tolist(),
                      "best_rate_raw": float(CLASSICAL_RATES[int(np.nanargmax(c_raw))]),
                      "best_rate_adjusted": float(CLASSICAL_RATES[int(np.nanargmax(c_adj))]),
                      "significance_adjusted": c_sig}
         a_ctrl = adj_ctrl = None
         if control_keys:
-            curves = [np.array([wc.roc_auc(s[el], pos[el]) for s in block("walk", k)]) for k in control_keys]
-            m, s = _band(curves)
-            a_ctrl = {"mean": m.tolist(), "sd": s.tolist(), "stats": wc.hump_stats(gammas, m),
-                      **_gain_rank(a_stats["gain_abs"], [wc.hump_stats(gammas, c)["gain_abs"] for c in curves])}
-            curves = [np.array([adj_auc(s) for s in block("walk", k)]) for k in control_keys]
-            m, s = _band(curves)
-            adj_ctrl = {"mean": m.tolist(), "sd": s.tolist(), "stats": wc.hump_stats(gammas, m),
-                        "best_seeds": [float(np.nanmax(c)) for c in curves],
-                        **_gain_rank(adj_stats["gain_abs"], [wc.hump_stats(gammas, c)["gain_abs"] for c in curves])}
+            a_ctrl = _control(gammas, [[wc.roc_auc(s[el], pos[el]) for s in scores[k]] for k in control_keys],
+                              a_stats["gain_abs"])
+            curves = [[adj_auc(s) for s in scores[k]] for k in control_keys]
+            adj_ctrl = dict(_control(gammas, curves, adj_stats["gain_abs"]),
+                            best_seeds=[float(np.nanmax(c)) for c in curves])
         rep = allo["rep"]
         a_res = {"auc": auc.tolist(), "stats": a_stats, "baselines": baselines, "control": a_ctrl,
                  "adjusted": {"auc": auc_adj.tolist(), "stats": adj_stats, "baselines": adj_baselines,
@@ -360,39 +350,26 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
                 "degree": int(degree[nodes[i]]), "known_allosteric": i in known} for r, i in enumerate(order)]
 
     # 7) files
-    files = {"graphml": prefix + ".graphml", "hump_csv": prefix + "_hump.csv",
-             "hump_png": prefix + "_hump.png", "hump_svg": prefix + "_hump.svg",
-             "ranking_csv": prefix + "_ranking.csv", "parameters": prefix + "_parameters.json",
-             "result": prefix + "_result.json"}
-    with open(os.path.join(outdir, files["hump_csv"]), "w") as f:
-        f.write("gamma,transport_distal_mean" + (",control_mean,control_sd" if t_ctrl else "") + "\n")
-        for i, g in enumerate(gammas):
-            f.write(f"{g},{transport[i]:.6f}"
-                    + (f",{t_ctrl['mean'][i]:.6f},{t_ctrl['sd'][i]:.6f}" if t_ctrl else "") + "\n")
-    save_figure(os.path.join(outdir, prefix + "_hump"), gammas, transport, f"{o['site_energy']} site energies",
-                "mean signal reaching distal residues",
-                control=(t_ctrl["mean"], t_ctrl["sd"]) if t_ctrl else None,
-                control_label=f"random site energies ({len(control_keys)} seeds, mean ± sd)",
-                peak_gamma=t_stats["peak_gamma"])
+    files = {"graphml": prefix + ".graphml", "ranking_csv": prefix + "_ranking.csv",
+             "parameters": prefix + "_parameters.json", "result": prefix + "_result.json"}
+    # (file tag, csv column, values, stats, control, y label, baselines, chance line)
+    curves = [("hump", "transport_distal_mean", transport, t_stats, t_ctrl, "mean signal reaching distal residues", {}, None)]
     if a_res:
-        for tag, blk, ylabel, bl, chance in (
-                ("allosteric", a_res, "ROC AUC, known allosteric residues", a_res["baselines"], 0.5),
-                ("adjusted", a_res["adjusted"], "ROC AUC among residues equally far from the active site",
-                 a_res["adjusted"]["baselines"], 0.5)):
-            files.update({f"{tag}_csv": f"{prefix}_{tag}.csv", f"{tag}_png": f"{prefix}_{tag}.png",
-                          f"{tag}_svg": f"{prefix}_{tag}.svg"})
-            ac = blk["control"]
-            with open(os.path.join(outdir, files[f"{tag}_csv"]), "w") as f:
-                f.write("gamma,auc" + (",control_mean,control_sd" if ac else "") + "\n")
-                for i, g in enumerate(gammas):
-                    f.write(f"{g},{blk['auc'][i]:.6f}" + (f",{ac['mean'][i]:.6f},{ac['sd'][i]:.6f}" if ac else "") + "\n")
-            save_figure(os.path.join(outdir, f"{prefix}_{tag}"), gammas, blk["auc"],
-                        f"{o['site_energy']} site energies", ylabel,
-                        control=(ac["mean"], ac["sd"]) if ac else None,
-                        control_label=f"random site energies ({len(control_keys)} seeds, mean ± sd)",
-                        baselines=[(v, k) for k, v in bl.items()], chance=chance,
-                        peak_gamma=blk["stats"]["peak_gamma"])
-    import csv
+        d = a_res["adjusted"]
+        curves += [("allosteric", "auc", a_res["auc"], a_stats, a_res["control"], "ROC AUC, known allosteric residues",
+                    a_res["baselines"], 0.5),
+                   ("adjusted", "auc", d["auc"], d["stats"], d["control"],
+                    "ROC AUC among residues equally far from the active site", d["baselines"], 0.5)]
+    for tag, column, values, st, ctrl, ylabel, bl, chance in curves:
+        files.update({f"{tag}_{ext}": f"{prefix}_{tag}.{ext}" for ext in ("csv", "png", "svg")})
+        with open(os.path.join(outdir, files[f"{tag}_csv"]), "w") as f:
+            f.write(f"gamma,{column}" + (",control_mean,control_sd" if ctrl else "") + "\n")
+            for i, g in enumerate(gammas):
+                f.write(f"{g},{values[i]:.6f}" + (f",{ctrl['mean'][i]:.6f},{ctrl['sd'][i]:.6f}" if ctrl else "") + "\n")
+        save_figure(os.path.join(outdir, f"{prefix}_{tag}"), gammas, values, f"{o['site_energy']} site energies", ylabel,
+                    control=(ctrl["mean"], ctrl["sd"]) if ctrl else None,
+                    control_label=f"random site energies ({len(control_keys)} seeds, mean ± sd)",
+                    baselines=[(v, k) for k, v in bl.items()], chance=chance, peak_gamma=st["peak_gamma"])
     with open(os.path.join(outdir, files["ranking_csv"]), "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(["rank", "residue", "resname", f"signal_from_{map_from.replace(' ', '_')}_at_gamma_{map_gamma:g}",
@@ -402,7 +379,7 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
 
     params = {k: o[k] for k in DEFAULTS if k != "workers"}
     params.update(input=inp if not os.path.isfile(inp) else os.path.basename(inp), cutoff=cutoff, gammas=gammas,
-                  chains_used=sorted({n.split(':')[0] for n in nodes}),
+                  chains_used=chains_used,
                   walk_from=walk_from, distal_min_hops=distal_hops, labels_used=(
                       {k: v for k, v in labels.items() if k not in ("active", "allosteric")} if labels else None),
                   code_version=code_version(), created_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
@@ -416,7 +393,7 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
     result = {
         "name": prefix, "elapsed_s": round(time.time() - t0, 1), "notes": notes, "label_note": label_note,
         "summary": {"residues": N, "contacts": G.number_of_edges(),
-                    "chains": sorted({n.split(':')[0] for n in nodes}), "walk_from": walk_from,
+                    "chains": chains_used, "walk_from": walk_from,
                     "n_start": len(walk_src),
                     "distal_count": int(distal.sum()), "distal_min_hops": distal_hops,
                     "site_energy": o["site_energy"], "scale": o["scale"]},
@@ -494,10 +471,7 @@ def main():
     a = ap.parse_args()
 
     prefix = a.prefix or (os.path.splitext(os.path.basename(a.input))[0] or "protein")
-    opts = dict(source=a.source, chains=a.chains, model=a.model, method=a.method, cutoff=a.cutoff,
-                min_seq_sep=a.min_seq_sep, weighted=a.weighted, site_energy=a.site_energy, scale=a.scale,
-                seed=a.seed, tmax=a.tmax, ntime=a.ntime, control=a.control, control_seeds=a.control_seeds, permutations=a.permutations,
-                labels=a.labels, active=a.active, allosteric=a.allosteric, site=a.site, workers=a.workers)
+    opts = {k: getattr(a, k) for k in DEFAULTS if k != "gammas" and hasattr(a, k)}
     if a.gammas:
         opts["gammas"] = [float(x) for x in a.gammas.split(",")]
     try:
