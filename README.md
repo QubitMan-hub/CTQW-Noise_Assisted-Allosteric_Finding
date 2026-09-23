@@ -9,6 +9,8 @@ amount of noise (the environment-assisted hump). No databases, no labels.
     python run_protein.py 1A8O.pdb          # a file
     python run_protein.py 6LU7              # or a 4-character PDB ID
 
+Or in the browser: `python web/app.py`, then open http://127.0.0.1:8000.
+
 Outputs land in `output/`:
 
     NAME.graphml     the residue network

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Protein Walk</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23161616'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <h1>Protein Walk</h1>
+      <p>Environment-assisted quantum walk on a protein's residue network: transport versus noise, a Qmod circuit, and where the signal goes.</p>
+    </header>
+
+    <form id="run-form" class="card input-card" novalidate>
+      <div class="field-label">Structure</div>
+
+      <button type="button" id="dropzone" class="dropzone">
+        <span class="dz-empty">
+          <span class="dz-title">Drop a .pdb or .cif file</span>
+          <span class="dz-sub">or click to choose one</span>
+        </span>
+        <span class="dz-chosen" hidden>
+          <span class="dz-file mono" id="dz-file"></span>
+          <span class="dz-sub" id="dz-size"></span>
+        </span>
+      </button>
+      <input type="file" id="file-input" name="structure" accept=".pdb,.ent,.cif,.mmcif" hidden>
+
+      <div class="or"><span>or</span></div>
+
+      <label class="pdb-row">
+        <span class="field-label inline">PDB id</span>
+        <input type="text" id="pdb-id" name="pdb_id" class="input mono" maxlength="4"
+               placeholder="1A8O" autocomplete="off" spellcheck="false">
+      </label>
+
+      <details class="options">
+        <summary>Options</summary>
+        <div class="options-grid">
+          <label class="field">
+            <span class="field-label">Start residue</span>
+            <input type="text" name="source" class="input mono" placeholder="auto: most connected" spellcheck="false">
+          </label>
+          <label class="field">
+            <span class="field-label">Chains</span>
+            <input type="text" name="chains" class="input mono" placeholder="all" spellcheck="false">
+          </label>
+          <div class="field">
+            <span class="field-label">Site energy</span>
+            <div class="segmented" role="radiogroup" aria-label="Site energy">
+              <label><input type="radio" name="site_energy" value="hydropathy" checked><span>hydropathy</span></label>
+              <label><input type="radio" name="site_energy" value="random"><span>random</span></label>
+            </div>
+          </div>
+          <label class="field">
+            <span class="field-label">Disorder scale</span>
+            <input type="number" name="scale" class="input mono" value="3" min="0" max="50" step="0.5">
+          </label>
+          <label class="toggle">
+            <input type="checkbox" name="no_qmod" value="1">
+            <span class="switch" aria-hidden="true"></span>
+            <span class="toggle-text">Graph only, skip Qmod</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" name="control" value="1" id="control">
+            <span class="switch" aria-hidden="true"></span>
+            <span class="toggle-text">Compare against random site energies
+              <span class="toggle-sub">Runs the sweep a second time as a null model</span></span>
+          </label>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button type="submit" class="btn-primary" id="run-btn">Run</button>
+        <span class="hint">Runs the real pipeline locally: about a minute for 70 residues, several minutes for 250.</span>
+      </div>
+      <p class="error" id="error" role="alert" hidden></p>
+    </form>
+
+    <section id="loading" class="card loading" hidden aria-live="polite">
+      <div class="loading-head">
+        <span class="spinner" aria-hidden="true"></span>
+        <div>
+          <div class="loading-title">Running pipeline</div>
+          <div class="loading-sub">network, noise sweep, signal map, Qmod</div>
+        </div>
+        <span class="elapsed mono" id="elapsed">00:00</span>
+      </div>
+      <div class="shimmer-block">
+        <span class="shimmer w60"></span>
+        <span class="shimmer w90"></span>
+        <span class="shimmer tall"></span>
+      </div>
+    </section>
+
+    <div id="results"></div>
+
+    <footer class="foot">Local only. Every number on this page comes from a pipeline run on the structure you submitted.</footer>
+  </main>
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
