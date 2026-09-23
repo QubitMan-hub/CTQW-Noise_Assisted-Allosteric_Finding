@@ -587,3 +587,15 @@ body { transition: background-color 200ms ease, color 200ms ease; }
 .chip-mini { display: inline-block; padding: 1px 8px; border-radius: 999px; font: 600 11px var(--mono); border: 1px solid var(--line-2); color: var(--ink-2); }
 .chip-mini.solid { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
 .in-table { margin-top: 10px; font-size: 13px; color: var(--ink-2); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.run-table tbody tr.open { background: var(--sunken); }
+.run-table tbody tr.open td { border-bottom-color: transparent; }
+.run-table tbody tr.row-detail { cursor: default; background: var(--sunken); }
+.run-table tbody tr.row-detail:hover { background: var(--sunken); }
+.run-table tr.row-detail td { white-space: normal; font-family: var(--sans); padding: 4px 16px 18px; }
+.row-desc { display: grid; gap: 12px; max-width: 760px; animation: drop-in 180ms ease both; }
+.row-title { font-weight: 600; font-size: 14px; }
+.row-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 13.5px; color: var(--ink-2); }
+.row-lines li { display: grid; grid-template-columns: 58px 1fr; gap: 12px; align-items: start; }
+.row-lines li.tk-hint { display: block; color: var(--muted); }
+.row-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12.5px; }
+@keyframes drop-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }

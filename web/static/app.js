@@ -881,7 +881,7 @@ setInterval(() => { if (!document.hidden) sideFact(); }, 12000);
 loadRecent();
 
 /* ---------- Walk | Table ---------- */
-let tableRows = [], tableSort = { key: "finished_utc", dir: -1 };
+let tableRows = [], tableSort = { key: "finished_utc", dir: -1 }, openRow = null;
 function setView(view, { scroll = true } = {}) {
   const table = view === "table";
   $("#view-walk").hidden = table;
@@ -935,12 +935,12 @@ function renderTable() {
   const lab = tableRows.filter((r) => r.beyond != null);
   const withP = lab.filter((r) => r.p_value != null), sig = withP.filter((r) => r.p_value < 0.05);
   const withC = lab.filter((r) => r.classical != null), beat = withC.filter((r) => r.beyond > r.classical);
-  $("#table-summary").replaceChildren(
+  $("#table-summary").replaceChildren(...[
     el("span", {}, "walks", el("strong", { text: String(tableRows.length) })),
     el("span", {}, "proteins", el("strong", { text: String(new Set(tableRows.map((r) => r.name)).size) })),
     lab.length ? el("span", {}, "with a known site", el("strong", { text: String(lab.length) })) : null,
     withP.length ? el("span", {}, "p < 0.05", el("strong", { text: `${sig.length} of ${withP.length}` })) : null,
-    withC.length ? el("span", {}, "beat classical", el("strong", { text: `${beat.length} of ${withC.length}` })) : null);
+    withC.length ? el("span", {}, "beat classical", el("strong", { text: `${beat.length} of ${withC.length}` })) : null].filter(Boolean));
   $("#table-empty").hidden = tableRows.length > 0;
   const head = el("tr", {}, TABLE_COLS.map((c) => {
     const th = el("th", { class: c.num ? "num" : "", "data-key": c.key, title: c.hint || "" },
@@ -953,7 +953,9 @@ function renderTable() {
   }));
   const dash = "–";
   const body = rows.map((r) => {
-    const tr = el("tr", { class: r.stored ? "" : "gone", title: r.stored ? `Open ${r.name}` : `${r.name}: full results cleared, click to run it again` },
+    const isOpen = openRow === r.run_id;
+    const tr = el("tr", { class: (r.stored ? "" : "gone") + (isOpen ? " open" : ""), "aria-expanded": String(isOpen),
+      title: isOpen ? "Click to close" : "Click for a description" },
       el("td", { class: "name" }, r.name + (r.source === "file" ? " (file)" : ""),
         el("span", { class: "sub", text: r.title || (r.labelled ? "known site" : `from ${r.walk_from}`) })),
       el("td", { class: "num", text: String(r.residues) }),
@@ -964,13 +966,45 @@ function renderTable() {
       el("td", {}, el("span", { class: "chip-mini" + (r.transport_verdict === "hump" ? "" : ""), text: verdictShort(r.transport_verdict, r.transport_gamma) })),
       el("td", { text: r.control ? "yes" : "no" }),
       el("td", { text: ago(r.finished_utc) }));
-    tr.addEventListener("click", () => openFromTable(r));
-    return tr;
+    tr.addEventListener("click", () => { openRow = isOpen ? null : r.run_id; renderTable(); });
+    return isOpen ? [tr, el("tr", { class: "row-detail" }, el("td", { colspan: String(TABLE_COLS.length) }, rowDescription(r)))] : tr;
   });
-  $("#run-table").replaceChildren(el("thead", {}, head), el("tbody", {}, body));
+  $("#run-table").replaceChildren(el("thead", {}, head), el("tbody", {}, body.flat()));
 }
 $("#table-filter").addEventListener("input", renderTable);
 $("#table-labelled").addEventListener("change", renderTable);
+
+// the same plain-language answers as the summary card, from the row's numbers
+function rowDescription(r) {
+  const lines = [];
+  const say = (kind, text) => lines.push(el("li", {}, el("span", { class: "tk-mark " + kind, text: kind === "yes" ? "yes" : kind === "no" ? "no" : "partly" }), el("span", { text })));
+  if (r.beyond != null) {
+    const sig = r.p_value != null && r.p_value < 0.05;
+    say(r.beyond >= 0.6 && (r.p_value == null || sig) ? "yes" : r.beyond > 0.55 ? "partly" : "no",
+      r.beyond <= 0.55 ? `Finds the allosteric site beyond closeness: no (${fmt(r.beyond)}, where 0.5 is closeness alone).`
+      : `Finds the allosteric site beyond closeness: scores ${fmt(r.beyond)}${r.p_value != null ? ` (p = ${fmtP(r.p_value)}${sig ? ", unlikely to be luck" : ", could still be luck"})` : ""}.`);
+    if (r.classical != null) {
+      const d = r.beyond - r.classical;
+      say(d >= 0.02 && r.beyond > 0.55 ? "yes" : d > -0.02 && r.beyond > 0.55 ? "partly" : "no",
+        `Needs the quantum walk: the best classical random walk scores ${fmt(r.classical)}${d >= 0.02 ? ", lower" : d > -0.02 ? ", about the same" : ", higher"}.`);
+    }
+    if (r.control_best != null)
+      say(r.beyond > r.control_best ? "yes" : "no", `About this protein's chemistry: the best random-energy run scores ${fmt(r.control_best)}${r.beyond > r.control_best ? ", lower" : ", as high or higher"}.`);
+    const helps = r.beyond_verdict === "hump" && r.beyond_gain >= 0.01 && r.beyond > 0.55;
+    say(helps ? "yes" : "no", helps ? `A little noise helps find it: best at γ = ${fmtGamma(r.beyond_gamma)}, ${fmt(r.beyond_gain)} above both ends.` : "A little noise helps find it: no.");
+  } else {
+    lines.push(el("li", { class: "tk-hint", text: "No known allosteric site, so only transport was measured. Pick a protein with a known site to test site finding." }));
+  }
+  say(r.transport_verdict === "hump" ? "partly" : "no", r.transport_verdict === "hump"
+    ? `Noise helps the signal travel (peak at γ = ${fmtGamma(r.transport_gamma)}), which happens in most networks.` : "Noise does not help the signal travel.");
+  const open = el("button", { type: "button", class: "btn-primary small", text: r.stored ? "Open full results" : "Set up a new run" });
+  open.addEventListener("click", (e) => { e.stopPropagation(); openFromTable(r); });
+  const settings = `${r.residues} residues, ${r.contacts} contacts, chains ${(r.chains || []).join(", ")} · walk from ${r.walk_from} · ${r.site_energy} energies, scale ${r.scale}${r.cutoff ? `, cutoff ${r.cutoff} Å` : ""} · control ${r.control ? "on" : "off"} · took ${r.elapsed_s} s`;
+  return el("div", { class: "row-desc" },
+    r.title ? el("div", { class: "row-title", text: r.title }) : null,
+    el("ul", { class: "row-lines" }, lines),
+    el("div", { class: "row-foot" }, open, el("span", { class: "muted", text: r.stored ? settings : `Full results cleared. ${settings}` })));
+}
 
 async function openFromTable(r) {
   if (r.stored) {
