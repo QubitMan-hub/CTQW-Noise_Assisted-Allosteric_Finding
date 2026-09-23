@@ -1,0 +1,8 @@
+# core pipeline
+numpy
+scipy
+networkx
+biopython
+matplotlib
+# quantum route only (qmod_walk.py, protein_to_qmod.py)
+classiq

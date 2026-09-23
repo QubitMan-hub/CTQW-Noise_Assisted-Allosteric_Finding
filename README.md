@@ -13,14 +13,23 @@ Database (ASD).
 ## Pipeline status
 
 1. Protein structure to residue interaction network: **done** (`src/rin_builder.py`)
-2. Tunable walk (quantum stochastic walk) on the graph: not started
-3. Noise sweep and residue ranking: not started
-4. Benchmark against ASD labels and accuracy-vs-noise figure: not started
+2. Tunable walk (quantum stochastic walk) on the graph: code added (`src/walk_core.py`, `src/classical_qsw.py`)
+3. Noise sweep and residue ranking: code added (`src/score_allostery.py`)
+4. Benchmark against ASD labels and accuracy-vs-noise figure: code added
+   (`src/run_benchmark.py`, `src/make_labels.py`); needs real labels in `data/benchmark/`
+
+Optional quantum route (Classiq Qmod, small proteins only): `src/qmod_walk.py`,
+`src/protein_to_qmod.py`. See `src/README.md` for the workflow and commands.
+
+The scripts in `src/` import each other, so keep them in one folder and run them
+from `src/`. Install with `pip install -r requirements.txt`; `classiq` is only
+needed for the two Qmod scripts.
 
 ## Layout
 
 ```
-src/                  source code (rin_builder.py)
+src/                  pipeline scripts (all eight .py files) + README.md
+requirements.txt      dependencies
 data/structures/      input PDB or mmCIF files
 data/benchmark/       ASD allosteric labels (added later)
 outputs/              generated networks (graphml, npz, csv, png)
@@ -28,7 +37,5 @@ outputs/              generated networks (graphml, npz, csv, png)
 notebooks/            analysis notebooks (added later)
 docs/                 notes and paper drafts (PROJECT_BRIEF.md)
 ```
-
-Dependencies: biopython, networkx, numpy, scipy, matplotlib.
 
 See `docs/PROJECT_BRIEF.md` for full context.
