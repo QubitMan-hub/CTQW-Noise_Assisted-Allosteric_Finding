@@ -24,155 +24,155 @@ z
   </g>
   <g id="axes_1">
    <g id="patch_2">
-    <path d="M 18.83223 154.743934 
-L 138.438672 154.743934 
-L 138.438672 44.902623 
-L 18.83223 44.902623 
+    <path d="M 18.18 154.743934 
+L 137.88 154.743934 
+L 137.88 44.902623 
+L 18.18 44.902623 
 z
-" clip-path="url(#pb279037b6d)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#p7347479911)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
-    <path d="M 158.942634 154.743934 
-L 278.549076 154.743934 
-L 278.549076 44.902623 
-L 158.942634 44.902623 
+    <path d="M 158.4 154.743934 
+L 278.1 154.743934 
+L 278.1 44.902623 
+L 158.4 44.902623 
 z
-" clip-path="url(#pb279037b6d)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#p7347479911)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
-    <path d="M 299.053038 154.743934 
-L 418.65948 154.743934 
-L 418.65948 44.902623 
-L 299.053038 44.902623 
+    <path d="M 298.62 154.743934 
+L 418.32 154.743934 
+L 418.32 44.902623 
+L 298.62 44.902623 
 z
-" clip-path="url(#pb279037b6d)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#p7347479911)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
-    <path d="M 439.163442 154.743934 
-L 558.769884 154.743934 
-L 558.769884 44.902623 
-L 439.163442 44.902623 
+    <path d="M 438.84 154.743934 
+L 558.54 154.743934 
+L 558.54 44.902623 
+L 438.84 44.902623 
 z
-" clip-path="url(#pb279037b6d)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#p7347479911)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
-    <path d="M 579.273846 154.743934 
-L 698.880288 154.743934 
-L 698.880288 44.902623 
-L 579.273846 44.902623 
+    <path d="M 579.06 154.743934 
+L 698.76 154.743934 
+L 698.76 44.902623 
+L 579.06 44.902623 
 z
-" clip-path="url(#pb279037b6d)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#p7347479911)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_7">
-    <path d="M 719.38425 154.743934 
-L 838.990692 154.743934 
-L 838.990692 44.902623 
-L 719.38425 44.902623 
+    <path d="M 719.28 154.743934 
+L 838.98 154.743934 
+L 838.98 44.902623 
+L 719.28 44.902623 
 z
-" clip-path="url(#pb279037b6d)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#p7347479911)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
-    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="78.635451" y="69.118078" transform="rotate(-0 78.635451 69.118078)">Structure</text>
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="78.03" y="69.118078" transform="rotate(-0 78.03 69.118078)">Structure</text>
    </g>
    <g id="text_2">
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(47.999592 111.675188)">PDB id or file;</text>
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(27.183576 124.734329)">known sites from ALLO</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(47.394141 111.675188)">PDB id or file;</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(28.469531 124.734329)">known sites: ASBench</text>
    </g>
    <g id="patch_8">
-    <path d="M 141.805607 99.823279 
-Q 148.691549 99.823279 154.124046 99.823279 
+    <path d="M 141.249568 99.823279 
+Q 148.140896 99.823279 153.57878 99.823279 
 " style="fill: none; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
-    <path d="M 149.924046 97.723279 
-L 154.124046 99.823279 
-L 149.924046 101.923279 
+    <path d="M 149.37878 97.723279 
+L 153.57878 99.823279 
+L 149.37878 101.923279 
 z
 " style="fill: #222222; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
    </g>
    <g id="text_3">
-    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="218.745855" y="69.118507" transform="rotate(-0 218.745855 69.118507)">Contact network</text>
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="218.25" y="69.118507" transform="rotate(-0 218.25 69.118507)">Contact network</text>
    </g>
    <g id="text_4">
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(178.087652 111.675188)">residues = nodes;</text>
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(168.624996 124.620423)">Cβ within 8 Å = edges</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(177.591797 111.675188)">residues = nodes;</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(168.129141 124.620423)">Cβ within 8 Å = edges</text>
    </g>
    <g id="patch_9">
-    <path d="M 281.916011 99.823279 
-Q 288.801953 99.823279 294.23445 99.823279 
+    <path d="M 281.469568 99.823279 
+Q 288.360896 99.823279 293.79878 99.823279 
 " style="fill: none; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
-    <path d="M 290.03445 97.723279 
-L 294.23445 99.823279 
-L 290.03445 101.923279 
+    <path d="M 289.59878 97.723279 
+L 293.79878 99.823279 
+L 289.59878 101.923279 
 z
 " style="fill: #222222; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
    </g>
    <g id="text_5">
-    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="358.856259" y="69.118507" transform="rotate(-0 358.856259 69.118507)">Hamiltonian</text>
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="358.47" y="69.118507" transform="rotate(-0 358.47 69.118507)">Hamiltonian</text>
    </g>
    <g id="text_6">
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(319.692197 111.262454)">H = A + s·diag(ε)</text>
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(307.343915 123.862454)">ε: z-scored hydropathy</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(319.305937 111.262454)">H = A + s·diag(ε)</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(306.957656 123.862454)">ε: z-scored hydropathy</text>
    </g>
    <g id="patch_10">
-    <path d="M 422.026415 99.823279 
-Q 428.912357 99.823279 434.344854 99.823279 
+    <path d="M 421.689568 99.823279 
+Q 428.580896 99.823279 434.01878 99.823279 
 " style="fill: none; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
-    <path d="M 430.144854 97.723279 
-L 434.344854 99.823279 
-L 430.144854 101.923279 
+    <path d="M 429.81878 97.723279 
+L 434.01878 99.823279 
+L 429.81878 101.923279 
 z
 " style="fill: #222222; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
    </g>
    <g id="text_7">
-    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="498.966663" y="69.118507" transform="rotate(-0 498.966663 69.118507)">Dephased walk</text>
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="498.69" y="69.118507" transform="rotate(-0 498.69 69.118507)">Dephased walk</text>
    </g>
    <g id="text_8">
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(450.726663 111.262454)">ρ from the active site</text>
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(454.541116 123.783001)">18 rates γ, 0 to 100</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(450.45 111.262454)">ρ from the active site</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(454.264453 123.783001)">18 rates γ, 0 to 100</text>
    </g>
    <g id="patch_11">
-    <path d="M 562.136819 99.823279 
-Q 569.022761 99.823279 574.455258 99.823279 
+    <path d="M 561.909568 99.823279 
+Q 568.800896 99.823279 574.23878 99.823279 
 " style="fill: none; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
-    <path d="M 570.255258 97.723279 
-L 574.455258 99.823279 
-L 570.255258 101.923279 
+    <path d="M 570.03878 97.723279 
+L 574.23878 99.823279 
+L 570.03878 101.923279 
 z
 " style="fill: #222222; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
    </g>
    <g id="text_9">
-    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="639.077067" y="69.118078" transform="rotate(-0 639.077067 69.118078)">Scores</text>
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="638.91" y="69.118078" transform="rotate(-0 638.91 69.118078)">Scores</text>
    </g>
    <g id="text_10">
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(598.83863 111.262454)">signal per residue</text>
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(599.461598 123.737298)">= ∫ ρ_ii dt, t ≤ 30</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(598.671562 111.262454)">signal per residue</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(599.294531 123.737298)">= ∫ ρ_ii dt, t ≤ 30</text>
    </g>
    <g id="patch_12">
-    <path d="M 702.247223 99.823279 
-Q 709.133165 99.823279 714.565662 99.823279 
+    <path d="M 702.129568 99.823279 
+Q 709.020896 99.823279 714.45878 99.823279 
 " style="fill: none; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
-    <path d="M 710.365662 97.723279 
-L 714.565662 99.823279 
-L 710.365662 101.923279 
+    <path d="M 710.25878 97.723279 
+L 714.45878 99.823279 
+L 710.25878 101.923279 
 z
 " style="fill: #222222; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
    </g>
    <g id="text_11">
-    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="779.187471" y="69.118078" transform="rotate(-0 779.187471 69.118078)">Tests</text>
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="779.13" y="69.118078" transform="rotate(-0 779.13 69.118078)">Tests</text>
    </g>
    <g id="text_12">
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(729.563721 104.962454)">AUC beyond distance,</text>
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(738.897705 117.562454)">p; classical walks;</text>
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(740.923409 130.162454)">random energies</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(729.50625 104.962454)">AUC beyond distance,</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(738.840234 117.562454)">p; classical walks;</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(740.865937 130.162454)">random energies</text>
    </g>
    <g id="text_13">
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #555555" transform="translate(233.311366 174.452949)">Nulls on every run: 5 random-energy seeds; 10,000 label shuffles within distance shells;</text>
-    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #555555" transform="translate(197.038554 185.25541)">two classical walks on the same contacts (plain, and with the energy-dependent rates of the noisy walk)</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #555555" transform="translate(232.982578 174.452949)">Nulls on every run: 5 random-energy seeds; 10,000 label shuffles within distance shells;</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #555555" transform="translate(196.709766 185.25541)">two classical walks on the same contacts (plain, and with the energy-dependent rates of the noisy walk)</text>
    </g>
   </g>
  </g>
  <defs>
-  <clipPath id="pb279037b6d">
-   <rect x="11.997576" y="11.34" width="840.662424" height="186.12"/>
+  <clipPath id="p7347479911">
+   <rect x="11.34" y="11.34" width="841.32" height="186.12"/>
   </clipPath>
  </defs>
 </svg>

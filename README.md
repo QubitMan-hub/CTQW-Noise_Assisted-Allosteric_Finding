@@ -19,7 +19,8 @@ two questions:
 | + the active site (`--active`) | walk from the active site: ranked candidate allosteric residues |
 | + known allosteric residues (`--allosteric`) | the ROC AUC test of how well the walk finds them |
 
-For the 118 proteins in the bundled ALLO benchmark table, the active site and
+For the 118 structures in the bundled benchmark table (from ASBench and the Allosteric
+Database, via Wu et al. 2022; see below), the active site and
 allosteric residues are filled in automatically from the PDB id. A PDB file does
 not say where a protein's allosteric site is; that comes from experiments, which
 is why a score is only possible where those residues are known.
@@ -38,7 +39,7 @@ Needs Python 3.10 or newer (tested on 3.11). Download the code and install the f
     python run_protein.py 1A8O.pdb                 # a file
     python run_protein.py 4OBE --chains A          # any PDB id
     python run_protein.py 4OBE --chains A --active A:12,A:13,A:61   # with an active site
-    python run_protein.py 1IWH                     # an ALLO protein (known sites looked up)
+    python run_protein.py 1IWH                     # a protein in the table (known sites looked up)
     python run_protein.py 1IWH --no-control        # quick look, skips the null model
 
 The website (QubitMan, with a light/dark toggle) runs on your own computer: the
@@ -127,10 +128,10 @@ Outputs land in `output/`:
 
     --source A:151          start residue when no active site is known (default: most connected)
     --chains A              chains to include (default: the labels' chains, else all)
-    --labels none           skip the allosteric test (default: ALLO lookup by PDB id)
+    --labels none           skip the allosteric test (default: table lookup by PDB id)
     --active A:57,A:102     your active site (the walk starts here)
     --allosteric A:196      known allosteric residues (adds the AUC test)
-    --site 2                which ALLO entry when a PDB has several (e.g. 1CE8_2)
+    --site 2                which table entry when a PDB has several (e.g. 1CE8_2)
     --no-control            skip the null model (about 4 times faster; --control-seeds 5)
     --site-energy random    random energies for the main run
     --scale 3               site-energy disorder strength
@@ -140,7 +141,7 @@ Outputs land in `output/`:
 ## Results so far
 
 `results/` holds the tables and figures for every protein studied so far: four
-used during development and fifteen held out, drawn from the ALLO table in an
+used during development and fifteen held out, drawn from that table in an
 order fixed in advance (the last five pre-registered as final before they were
 run; see `results/PREREGISTRATION.md`), positives and nulls alike, with the
 per-run data and the scripts that rebuild them. In short:
@@ -190,13 +191,17 @@ less. Time grows roughly with the square of the residue count.
 `data/allo_labels.csv` is Supplementary Table S2 of Wu N, Strömich L, Yaliraki SN,
 "Prediction of allosteric sites and signaling: insights from benchmarking
 datasets", *Patterns* 3(1), 100408 (2022), doi:10.1016/j.patter.2021.100408
-(CC BY 4.0), curated from the Allosteric Database. Cite it if you use it.
+(CC BY 4.0): 118 structures of 113 allosteric proteins that the authors collected from
+the ASBench benchmark (Huang et al., *Bioinformatics* 31, 2598 (2015)) and the
+Allosteric Database (ASD). Cite both if you use it. We call it "the ASBench table";
+earlier versions of this project, and `results/PREREGISTRATION.md`, called it "the
+ALLO table", a name that does not appear in the paper.
 
 ## Files
 
     run_protein.py   the one command; analyze() is shared with the web app
     walk_core.py     the physics: walk, metrics, parallel sweeps
-    labels.py        active-site / allosteric residues (ALLO table or your own)
+    labels.py        active-site / allosteric residues (the ASBench table or your own)
     rin_builder.py   structure -> residue network
     web/             the local web app
     tests/           python tests/test_walk_core.py, python tests/test_labels.py
@@ -205,4 +210,4 @@ datasets", *Patterns* 3(1), 100408 (2022), doi:10.1016/j.patter.2021.100408
 
 © 2026 Qubit Man. Released under the MIT licence (see `LICENSE`). If you use
 this code, please cite it (see `CITATION.cff`, or GitHub's "Cite this repository"
-button). The bundled ALLO labels are CC BY 4.0 and must be cited as above.
+button). The bundled labels are CC BY 4.0 and must be cited as above.

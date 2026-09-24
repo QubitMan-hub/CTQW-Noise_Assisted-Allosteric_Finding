@@ -7,7 +7,7 @@
 Every protein studied is reported, including the ones where nothing is found.
 Runs use the pipeline defaults (8 Å Cβ contacts, hydropathy energies at scale 3,
 18 noise levels, 5 random-energy seeds, 10,000 label shuffles); the known sites
-come from the bundled ALLO table. Only the small data files of each run are kept
+come from the bundled ASBench table (Wu et al. 2022, Table S2). Only the small data files of each run are kept
 (CSVs, parameters and result JSON); the network, structure and per-run figures
 are left out to keep the repository light.
 """
@@ -348,7 +348,7 @@ def fig_workflow():
     ax.set_xlim(0, 12.3)
     ax.set_ylim(-0.15, 2.9)
     ax.axis("off")
-    boxes = [("Structure", "PDB id or file;\nknown sites from ALLO"),
+    boxes = [("Structure", "PDB id or file;\nknown sites: ASBench"),
              ("Contact network", "residues = nodes;\nCβ within 8 Å = edges"),
              ("Hamiltonian", "H = A + s·diag(ε)\nε: z-scored hydropathy"),
              ("Dephased walk", "ρ from the active site\n18 rates γ, 0 to 100"),

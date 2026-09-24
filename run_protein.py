@@ -17,8 +17,8 @@ the output folder:
     NAME_result.json         all numbers behind the figures
 
 Any PDB id or structure file works. The walk starts at the active site when one
-is known: looked up in the bundled ALLO benchmark table (118 proteins) by PDB id,
-or given with --active. Known allosteric residues (from ALLO or --allosteric)
+is known: looked up in the bundled ASBench table (118 structures; Wu et al. 2022, Table S2) by PDB id,
+or given with --active. Known allosteric residues (from that table or --allosteric)
 add the ROC AUC test; without them you still get the ranked candidate residues.
 With no active site at all, the walk starts at --source (default: the
 most-connected residue) and gives the transport curve and ranking.
@@ -542,10 +542,10 @@ def main():
                          "skips it (about 4 times faster, but a hump without it is not evidence).")
     ap.add_argument("--control-seeds", type=int, default=5, help="Random-energy seeds for the control.")
     ap.add_argument("--permutations", type=int, default=10000, help="Label shuffles for the p-value.")
-    ap.add_argument("--labels", choices=["auto", "none"], default="auto", help="auto: ALLO table by PDB id; none: skip.")
+    ap.add_argument("--labels", choices=["auto", "none"], default="auto", help="auto: the ASBench table by PDB id; none: skip.")
     ap.add_argument("--active", default=None, help="Active-site residues, e.g. A:57,A:102 (the walk starts here).")
     ap.add_argument("--allosteric", default=None, help="Known allosteric residues, e.g. A:196,A:203 (adds the AUC test).")
-    ap.add_argument("--site", default=None, help="Which ALLO entry when a PDB has several (e.g. 2 for 1CE8_2).")
+    ap.add_argument("--site", default=None, help="Which table entry when a PDB has several (e.g. 2 for 1CE8_2).")
     ap.add_argument("--workers", type=int, default=None, help="Parallel processes (default: CPU cores, max 8).")
     ap.add_argument("--outdir", default="output")
     ap.add_argument("--prefix", default=None)

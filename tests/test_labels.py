@@ -14,7 +14,7 @@ def test_table_loads():
 
 def test_lookup_by_pdb_id_and_site():
     lab, note, entries = lb.resolve("1iwh")
-    assert lab["entry"] == "1IWH" and lab["origin"] == "ALLO" and "Hemoglobin" in note
+    assert lab["entry"] == "1IWH" and lab["origin"] == "ASBench" and "Hemoglobin" in note
     lab2, _, entries2 = lb.resolve("1CE8", site="2")
     assert lab2["entry"] == "1CE8_2" and set(entries2) == {"1CE8_1", "1CE8_2"}
     assert lb.resolve("1A8O")[0] is None                   # not in the table

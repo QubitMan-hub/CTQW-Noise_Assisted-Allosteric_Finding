@@ -11,8 +11,10 @@ pipeline's own runs, so they can be rebuilt and checked:
 The pipeline defaults are used throughout: 8 Å Cβ contacts, hydropathy site
 energies at scale 3, 18 dephasing rates (0 and 0.01 to 100), T = 30, 5
 random-energy seeds and 10,000 label shuffles for p. The active and allosteric
-residues come from the bundled ALLO table (Wu, Strömich & Yaliraki, Patterns
-2022, Table S2).
+residues come from the bundled benchmark table, Table S2 of Wu, Strömich & Yaliraki (Patterns
+2022): 118 structures collected from ASBench (Huang et al. 2015) and the Allosteric
+Database. `PREREGISTRATION.md` and older commits call it "the ALLO table"; that
+name does not appear in the paper, and the table is the same.
 
 ## Which proteins, and when they were chosen
 
@@ -100,7 +102,7 @@ What this adds up to:
   perturbation-response scanning in 3. The methods succeed on different proteins,
   and tested together they do not differ in how often they succeed (Cochran's Q,
   p = 0.83); no pairwise difference in AUC survives a Holm correction.
-- Everything here is conditional on ALLO's definition of an allosteric site.
+- Everything here is conditional on this table's definition of an allosteric site.
 - The 95% intervals are wide (0.16 to 0.60), because each protein has only 5 to 19
   labelled allosteric residues.
 

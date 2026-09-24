@@ -2,7 +2,8 @@
 """select_proteins.py - the prespecified validation set, chosen before any of it is run.
 
 The four proteins in PROTEINS of make_results.py were picked during development.
-The validation set is drawn from the ALLO table by a rule fixed in advance:
+The validation set is drawn from the ASBench table (data/allo_labels.csv; called the
+ALLO table when this rule was committed) by a rule fixed in advance:
 
   1. one entry per PDB id (the first in the table);
   2. every active-site and allosteric residue lies on one chain;

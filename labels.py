@@ -3,12 +3,14 @@
 
 Labels come from, in order of precedence:
   1. residues you give (--active / --allosteric),
-  2. the bundled ALLO benchmark table (data/allo_labels.csv), looked up by the
+  2. the bundled benchmark table (data/allo_labels.csv), looked up by the
      structure's PDB id. That table is Supplementary Table S2 of
      Wu, Stromich & Yaliraki, "Prediction of allosteric sites and signaling:
      insights from benchmarking datasets", Patterns 3(1), 100408 (2022),
-     doi:10.1016/j.patter.2021.100408 (CC BY 4.0), curated from the Allosteric
-     Database (ASD). Cite it if you use it.
+     doi:10.1016/j.patter.2021.100408 (CC BY 4.0): 118 structures collected from
+     the ASBench benchmark (Huang et al., Bioinformatics 31, 2598 (2015)) and the
+     Allosteric Database (ASD). Cite both if you use it. (Earlier versions of this
+     project called it "the ALLO table"; that name does not appear in the paper.)
 
 Residue ids use the network's convention, CHAIN:RESSEQ[ICODE] in author
 numbering, e.g. A:57 or A:57B.
@@ -17,9 +19,10 @@ import csv, os, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TABLE_PATH = os.path.join(HERE, "data", "allo_labels.csv")
-ALLO_CITATION = ("Wu N, Stromich L, Yaliraki SN. Prediction of allosteric sites and signaling: "
-                 "insights from benchmarking datasets. Patterns 3(1), 100408 (2022), "
-                 "doi:10.1016/j.patter.2021.100408, Table S2.")
+TABLE_CITATION = ("Wu N, Stromich L, Yaliraki SN. Prediction of allosteric sites and signaling: "
+                  "insights from benchmarking datasets. Patterns 3(1), 100408 (2022), "
+                  "doi:10.1016/j.patter.2021.100408, Table S2; from ASBench (Huang W et al. "
+                  "Bioinformatics 31, 2598 (2015)) and the Allosteric Database.")
 _ID = re.compile(r"^[0-9][A-Za-z0-9]{3}$")
 _RES = re.compile(r"^([A-Za-z0-9]+):(-?\d+[A-Za-z]?)(?::([A-Za-z]{3}))?$")
 
@@ -74,14 +77,14 @@ def parse_residues(text, default_chain=None):
 
 
 def from_table_row(row):
-    return {"origin": "ALLO", "entry": row["entry"], "pdb": row["pdb"], "protein": row["protein"],
-            "allosteric_ligand": row["allosteric_ligand"], "citation": ALLO_CITATION,
+    return {"origin": "ASBench", "entry": row["entry"], "pdb": row["pdb"], "protein": row["protein"],
+            "allosteric_ligand": row["allosteric_ligand"], "citation": TABLE_CITATION,
             "active": parse_residues(row["active_site"]),
             "allosteric": parse_residues(row["allosteric_site"])}
 
 
 def resolve(inp, labels_arg="auto", active=None, allosteric=None, site=None, default_chain=None):
-    """Work out which labels apply. Returns (labels or None, note, other ALLO entries)."""
+    """Work out which labels apply. Returns (labels or None, note, other entries for this PDB id)."""
     if active or allosteric:
         if not active:
             raise ValueError("known allosteric residues need the active site too (--active).")
@@ -94,15 +97,15 @@ def resolve(inp, labels_arg="auto", active=None, allosteric=None, site=None, def
     pid = structure_id(inp)
     rows = [r for r in load_table() if r["pdb"].upper() == pid] if pid else []
     if not rows:
-        return None, (f"PDB id {pid} is not in the ALLO table" if pid else "no PDB id found for this structure"), []
+        return None, (f"PDB id {pid} is not in the ASBench table" if pid else "no PDB id found for this structure"), []
     entries = [r["entry"] for r in rows]
     row = rows[0]
     if site is not None:
         pick = [r for r in rows if r["entry"] == site or r["entry"].endswith(f"_{site}")]
         if not pick:
-            raise ValueError(f"ALLO has no site '{site}' for {pid}; choose one of {', '.join(entries)}.")
+            raise ValueError(f"the ASBench table has no site '{site}' for {pid}; choose one of {', '.join(entries)}.")
         row = pick[0]
-    note = f"ALLO entry {row['entry']} ({row['protein']})"
+    note = f"ASBench entry {row['entry']} ({row['protein']})"
     if len(rows) > 1:
         note += f"; other sites for this PDB: {', '.join(e for e in entries if e != row['entry'])} (use --site)"
     return from_table_row(row), note, entries
