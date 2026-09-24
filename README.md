@@ -55,6 +55,8 @@ Outputs land in `output/`:
     NAME_allosteric.png/.svg/.csv  allosteric AUC vs noise, with baselines (if labels)
     NAME_adjusted.png/.svg/.csv    the same AUC among residues equally far from the active site
     NAME_ranking.csv               every residue ranked by the signal it receives
+    NAME_quantum_vs_classical.csv  per residue: quantum signal, a classical random walk tuned to
+                                   reach the far side equally, and their difference
     NAME.graphml                   the residue network
     NAME_parameters.json           every setting, the labels used, a code version
     NAME_result.json               every number behind the figures
@@ -86,6 +88,14 @@ Outputs land in `output/`:
   exactly for 17 hopping rates k from 0.01 to 100; its best rate is drawn as a
   baseline on both allosteric charts. Beating it is the evidence that the
   quantum part matters. It costs about a second.
+- **Quantum versus classical, residue by residue:** at every noise level the
+  classical walk's hopping rate is tuned so it sends exactly as much signal to
+  the distal residues as the quantum walk; the difference then shows where the
+  quantum walk sends *more* or *less* signal than diffusion would. It works for
+  any protein, labels or not (`NAME_quantum_vs_classical.csv`, and the map's
+  "Quantum − classical" view with a noise-level slider on the website). At heavy
+  noise the matched rate approaches 2/γ, the known classical limit of a
+  dephased walk, and the difference fades, which is a built-in check.
 - **Significance:** the allosteric labels are shuffled within each distance shell
   10,000 times (`--permutations`), and each shuffle takes its best score over all
   noise levels, so p accounts for picking the best gamma. The same test is run

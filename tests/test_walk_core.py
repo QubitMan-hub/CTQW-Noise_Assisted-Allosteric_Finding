@@ -128,6 +128,16 @@ def test_permutation_test_observed_matches_auc():
     assert wc.shell_permutation_test(perfect, shells, pos, n_perm=2000)["p_value"] < 0.01
 
 
+def test_matched_classical_rate():
+    A, _ = protein_like()
+    walk = wc.classical_walk(A, [0], 5.0)
+    assert np.allclose(walk(0.7), wc.classical_scores(A, [0], [0.7], 5.0)[0])
+    far = np.zeros(len(A), dtype=bool); far[len(A) // 2:] = True
+    target = walk(0.3)[far].mean()                       # a rate we know, recovered by the matching
+    k = wc.matched_rate(walk, far, target)
+    assert abs(k - 0.3) / 0.3 < 1e-6 and abs(walk(k)[far].mean() - target) < 1e-9
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

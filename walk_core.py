@@ -265,7 +265,12 @@ def distal_mask(G, nodes, source_ids, fraction=0.5):
     """Residues in the far part of the network from the source(s): hop distance at
     least ceil(fraction * eccentricity). Averaging transport over this set is far
     less arbitrary than a single 'farthest' residue. Returns (mask, min_hops)."""
-    dist = hop_distance(G, nodes, [source_ids] if isinstance(source_ids, str) else source_ids)
+    return distal_from_hops(hop_distance(G, nodes, [source_ids] if isinstance(source_ids, str) else source_ids),
+                            fraction)
+
+
+def distal_from_hops(dist, fraction=0.5):
+    """distal_mask from hop distances already computed."""
     min_hops = max(1, int(np.ceil(fraction * max(dist.max(), 0))))
     return dist >= min_hops, min_hops
 
@@ -306,26 +311,59 @@ def shell_percentile(scores, shells, n):
     return out
 
 
-def classical_scores(A, source_idx, rates, tmax):
+def classical_walk(A, source_idx, tmax):
     """Classical baseline: a continuous-time random walk on the same contacts,
-    dp/dt = -k L p with L = D - A, started from the same (mixed) sources. Returns
-    the time-integrated occupation up to tmax for each hopping rate k, exactly,
-    from one eigendecomposition of L (so every rate costs almost nothing).
-    Site energies do not enter: a classical walker has no phases to shift."""
+    dp/dt = -k L p with L the graph Laplacian of the squared couplings A_ij^2 (the
+    rates a strongly dephased quantum walk reduces to; the same as A for an
+    unweighted network), started from the same (mixed) sources. Returns a function
+    k -> time-integrated occupation up to tmax, exact, from one eigendecomposition
+    of L (so every hopping rate k costs almost nothing); scores.mean_on(mask) gives a
+    faster k -> mean over some residues. Site energies do not enter: a classical
+    walker has no phases to shift."""
     A = A.toarray() if sparse.issparse(A) else np.asarray(A, dtype=float)
-    L = np.diag(A.sum(axis=1)) - A
-    w, V = np.linalg.eigh(L)
+    W = A * A
+    w, V = np.linalg.eigh(np.diag(W.sum(axis=1)) - W)
     w = np.clip(w, 0.0, None)
     src = [source_idx] if np.isscalar(source_idx) else list(source_idx)
     p0 = np.zeros(len(A))
     p0[src] = 1.0 / len(src)
     c = V.T @ p0
-    out = []
-    for k in rates:
+
+    def integral(k):                      # time integral of each eigenmode up to tmax
         x = k * w * tmax
-        f = np.where(x > 1e-12, -np.expm1(-x) / np.where(w > 0, k * w, 1.0), tmax)
-        out.append(V @ (c * f))
-    return np.array(out)
+        return np.where(x > 1e-12, -np.expm1(-x) / np.where(w > 0, k * w, 1.0), tmax)
+
+    def scores(k):
+        return V @ (c * integral(k))
+
+    def mean_on(mask):
+        u = V[np.asarray(mask, dtype=bool)].mean(axis=0) * c
+        return lambda k: float(u @ integral(k))
+    scores.mean_on = mean_on
+    return scores
+
+
+def classical_scores(A, source_idx, rates, tmax):
+    """classical_walk at several hopping rates, shape (len(rates), N)."""
+    walk = classical_walk(A, source_idx, tmax)
+    return np.array([walk(k) for k in rates])
+
+
+def matched_rate(walk, mask, target, lo=1e-3, hi=1e3, steps=60):
+    """Hopping rate at which the classical walk sends the same mean signal to the
+    masked residues as the target, by bisection in log k: more hopping spreads the
+    walker further, so the mean normally rises with k. If it does not (a target above
+    what any rate reaches, or an occupation that overshoots), the result is clamped
+    to [lo, hi] or is one of several matches; callers check the match."""
+    mean = walk.mean_on(mask)
+    lo, hi = np.log(lo), np.log(hi)
+    for _ in range(steps):
+        mid = (lo + hi) / 2
+        if mean(np.exp(mid)) < target:
+            lo = mid
+        else:
+            hi = mid
+    return float(np.exp((lo + hi) / 2))
 
 
 def shell_permutation_test(score_rows, shells, positive, n_perm=10000, seed=0):

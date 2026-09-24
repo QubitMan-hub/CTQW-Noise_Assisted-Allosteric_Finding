@@ -484,39 +484,99 @@ function drawChart(c) {
 }
 
 /* ---------- residue signal map ---------- */
-// shading range of the map: the start residues are excluded, they always hold the most signal
-function scoreRange(mp) {
-  const others = mp.nodes.filter((n) => n.role !== "source").map((n) => n.score);
-  return [Math.min(...others), Math.max(...others)];
+/* the map at one noise level: signal, matched classical walk and their difference per residue.
+   Runs from before the slider existed only hold the default level (on the nodes). */
+let mapMode = "signal", mapIdx = null;       // view ("signal" or "diff") and the gamma index shown
+function mapView(r) {
+  const mp = r.map, full = Array.isArray(mp.signal), j = full ? (mapIdx ?? mp.index) : null;
+  const signal = full ? mp.signal[j] : mp.nodes.map((n) => n.score);
+  const classical = full ? mp.classical[j] : mp.nodes.map((n) => n.classical);
+  const diff = classical.every((c) => typeof c === "number") ? signal.map((v, i) => v - classical[i]) : null;
+  const rest = mp.nodes.map((n, i) => i).filter((i) => mp.nodes[i].role !== "source");   // the start always holds the most signal
+  return { signal, classical, diff, gamma: full ? mp.gammas[j] : mp.gamma,
+    rate: full ? mp.rates[j] : r.quantum_vs_classical && r.quantum_vs_classical.classical_rate,
+    lo: Math.min(...rest.map((i) => signal[i])), hi: Math.max(...rest.map((i) => signal[i])),
+    dmax: diff ? Math.max(...rest.map((i) => Math.abs(diff[i]))) || 1 : 1 };
 }
 
-function mapCard(r) {
-  const mp = r.map, [lo, hi] = scoreRange(mp);
-  const ringKey = (kind) => {
-    const s = svg("svg", { width: 18, height: 18, viewBox: "0 0 18 18" });
+function mapKeyDot(kind) {                 // legend markers drawn like the map's dots
+  const s = svg("svg", { width: 18, height: 18, viewBox: "0 0 18 18" });
+  if (kind === "source" || kind === "other") {
     svg("circle", { cx: 9, cy: 9, r: 4, fill: C("--ctrl") }, s);
     svg("circle", { cx: 9, cy: 9, r: 7.5, fill: "none", stroke: kind === "source" ? C("--ink") : C("--muted"), "stroke-width": 1.5,
       "stroke-dasharray": kind === "source" ? "none" : "2.5 2" }, s);
-    return s;
-  };
-  const fromActive = mp.from === "active site";
-  return el("section", { class: "card" },
-    el("div", { class: "card-head" },
-      el("div", {},
-        el("h3", { class: "card-title", text: "Residue signal map" }),
-        el("p", { class: "card-sub" }, `Signal each residue receives from the ${fromActive ? "active site" : "source"} at `,
-          el("span", { class: "mono", text: `γ = ${fmtGamma(mp.gamma)}` }),
-          `${r.allosteric ? " (the best-AUC rate)" : " (the transport peak)"}. Stronger shades mean more signal. Residues sit at their 3D positions projected onto the protein's two main axes; lines are contacts.`))),
-    el("div", { class: "map-legend" },
-      el("span", { class: "ramp" }, el("span", { class: "mono", text: fmt(lo) }), el("span", { class: "ramp-bar" }), el("span", { class: "mono", text: fmt(hi) })),
-      el("span", { class: "ring-key" }, ringKey("source"), el("span", { text: fromActive ? "active site" : `start ${r.summary.walk_from}` })),
-      r.allosteric ? el("span", { class: "ring-key" }, ringKey("other"), el("span", { text: "known allosteric" })) : null),
-    el("div", { class: "map-wrap", id: "map" }),
-    guide([
+  } else {
+    svg("circle", { cx: 9, cy: 9, r: 5.5, fill: kind === "more" ? C("--ink") : C("--card"), stroke: C("--ink"), "stroke-width": kind === "more" ? 1 : 2 }, s);
+  }
+  return s;
+}
+
+function mapCard(r) {
+  const mp = r.map, fromActive = mp.from === "active site";
+  mapIdx = null;
+  const hasDiff = !!mapView(r).diff, hasSlider = Array.isArray(mp.signal);
+  if (!hasDiff) mapMode = "signal";
+  const sub = el("p", { class: "card-sub" }), legendBox = el("div", { class: "map-legend" }), guideBox = el("div");
+  const rings = [el("span", { class: "ring-key" }, mapKeyDot("source"), el("span", { text: fromActive ? "active site" : `start ${r.summary.walk_from}` })),
+    r.allosteric ? el("span", { class: "ring-key" }, mapKeyDot("other"), el("span", { text: "known allosteric" })) : null];
+  const gLabel = el("span", { class: "mono" });
+  function paint(draw = true) {
+    const v = mapView(r), isDefault = mapIdx === null || mapIdx === mp.index;
+    const why = isDefault ? (r.allosteric ? " (where the AUC beyond distance peaks)" : " (the transport peak)") : "";
+    gLabel.textContent = `γ = ${fmtGamma(v.gamma)}${isDefault ? "  ·  default" : ""}`;
+    if (mapMode === "signal") {
+      sub.replaceChildren(`Signal each residue receives from the ${fromActive ? "active site" : "source"} at `,
+        el("span", { class: "mono", text: `γ = ${fmtGamma(v.gamma)}` }),
+        `${why}. Stronger shades mean more signal. Residues sit at their 3D positions projected onto the protein's two main axes; lines are contacts.`);
+      legendBox.replaceChildren(el("span", { class: "ramp" }, el("span", { class: "mono", text: fmt(v.lo) }), el("span", { class: "ramp-bar" }), el("span", { class: "mono", text: fmt(v.hi) })), ...rings);
+    } else {
+      sub.replaceChildren("Where the quantum walk at ", el("span", { class: "mono", text: `γ = ${fmtGamma(v.gamma)}` }),
+        " sends its signal compared with an ordinary random walk on the same contacts. The classical hopping rate (",
+        el("span", { class: "mono", text: `k = ${Number(v.rate).toPrecision(3)}` }),
+        ") is set so both deliver the same amount of signal to the far side, so only where it goes differs.");
+      legendBox.replaceChildren(el("span", { class: "ring-key" }, mapKeyDot("more"), el("span", { text: "quantum puts more here" })),
+        el("span", { class: "ring-key" }, mapKeyDot("less"), el("span", { text: "classical puts more here" })),
+        el("span", { class: "muted", text: `darker = bigger difference, up to ${fmt(v.dmax, 4)}` }), ...rings);
+    }
+    guideBox.replaceChildren(guide(mapMode === "signal" ? [
       ["Each dot:", "one residue, placed at its real 3D position flattened onto the protein's two longest axes. Lines are contacts."],
       ["Shade:", "how much signal that residue collected over the whole walk. Hover a dot for its name and value."],
       ["Rings:", `solid rings mark where the walk starts${r.allosteric ? "; dashed rings mark the known allosteric residues. Dashed rings in strong shades, far from the start, are what a good prediction looks like" : ""}.`],
+      ...(hasSlider ? [["Slider:", "move through the 18 noise levels, from the fully quantum walk (γ = 0) to heavy noise (γ = 100)."]] : []),
+    ] : [
+      ["The comparison:", "both walks start at the same residues and spend the same total time spread over the protein; the classical one is tuned to reach the far side just as much. Each dot shows quantum signal minus classical signal."],
+      ["Filled dots:", "the quantum walk puts more signal here: interference and the residues' energies steer it there."],
+      ["Hollow dots:", "an ordinary random walk would put more signal here. Faint dots are about the same either way."],
+      ["The slider:", "at heavy noise the two walks become the same (the difference fades), which is a built-in check. The interesting pattern is at moderate noise."],
+      ["What to look for:", `${r.allosteric ? "filled, dark dots inside dashed rings (known allosteric residues) are where the quantum walk does better than diffusion; " : ""}clusters of filled dots away from the start trace a route that only the quantum walk favours. Hover a dot for both values.`],
     ]));
+    if (draw && mapRestyle) mapRestyle();     // same dots, new colours: no rebuild while sliding
+  }
+  let toggle = null;
+  if (hasDiff) {
+    toggle = el("div", { class: "segmented map-mode", role: "radiogroup", "aria-label": "Map view" });
+    for (const [val, label] of [["signal", "Signal"], ["diff", "Quantum − classical"]]) {
+      const input = el("input", { type: "radio", name: "map-mode", value: val, checked: mapMode === val });
+      input.addEventListener("change", () => { mapMode = val; paint(); });
+      toggle.append(el("label", {}, input, el("span", { text: label })));
+    }
+  }
+  let slider = null;
+  if (hasSlider) {
+    const range = el("input", { type: "range", min: 0, max: mp.gammas.length - 1, step: 1, value: mp.index,
+      class: "gamma-range", "aria-label": "Noise level shown on the map" });
+    range.addEventListener("input", () => { mapIdx = Number(range.value); hideTip(); paint(); });
+    slider = el("div", { class: "map-slider" }, el("span", { class: "muted", text: "noise level" }), range, gLabel);
+  }
+  paint(false);                              // the map itself is drawn once the card is on the page
+  return el("section", { class: "card" },
+    el("div", { class: "card-head" },
+      el("div", {}, el("h3", { class: "card-title", text: "Residue signal map" }), sub)),
+    toggle,
+    legendBox,
+    el("div", { class: "map-wrap", id: "map" }),
+    slider,
+    guideBox);
 }
 
 function shade(t) {                     // theme ramp: little signal -> lots of signal
@@ -524,33 +584,47 @@ function shade(t) {                     // theme ramp: little signal -> lots of 
   return `rgb(${lo.map((v, i) => Math.round(v + (hi[i] - v) * k)).join(",")})`;
 }
 
+let mapRestyle = null;                     // recolours the drawn map for a new noise level or view
 function drawMap() {
   const r = current, host = $("#map");
+  mapRestyle = null;
   if (!r || !host) return;
   host.replaceChildren();
   const mp = r.map, N = mp.nodes.length;
+  let v = mapView(r), diff = mapMode === "diff" && !!v.diff;
   const W = Math.max(300, host.clientWidth), pad = 22, inner = W - 2 * pad;
   const H = Math.round(Math.min(inner * Math.max(mp.aspect, 0.35), 560) + 2 * pad);
   const sx = Math.min(inner, (H - 2 * pad) / Math.max(mp.aspect, 1e-3));
   const offX = pad + (inner - sx) / 2;
   const P = mp.nodes.map((n) => [offX + n.x * sx, pad + n.y * sx]);
-  const [lo, hi] = scoreRange(mp);
   const rad = Math.max(3, Math.min(7, 150 / Math.sqrt(N)));
   const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img",
-    "aria-label": `Contact network of ${N} residues shaded by signal received` }, host);
+    "aria-label": diff ? `Contact network of ${N} residues: quantum minus classical signal` : `Contact network of ${N} residues shaded by signal received` }, host);
   const eg = svg("g", {}, root);
   const edgeEls = mp.edges.map(([a, b]) => svg("line", { x1: P[a][0], y1: P[a][1], x2: P[b][0], y2: P[b][1], stroke: C("--edge"), "stroke-width": 1 }, eg));
   const edgesOf = mp.nodes.map(() => []);
   mp.edges.forEach(([a, b], k) => { edgesOf[a].push(k); edgesOf[b].push(k); });
 
+  // how each dot looks: signal view shades by signal; difference view fills where the quantum walk
+  // puts more and leaves hollow where the classical walk does, darker for a bigger difference
+  const look = (n, i) => {
+    if (n.role === "source") return { fill: shade(1), stroke: C("--card"), w: 1.5 };
+    if (!diff) return { fill: shade((v.signal[i] - v.lo) / (v.hi - v.lo || 1)), stroke: C("--card"), w: 1.5 };
+    const t = Math.min(1, Math.abs(v.diff[i]) / v.dmax);
+    return v.diff[i] >= 0 ? { fill: shade(t), stroke: C("--card"), w: 1.5 } : { fill: C("--card"), stroke: shade(Math.max(0.15, t)), w: 2 };
+  };
   const ng = svg("g", {}, root);
-  const order = mp.nodes.map((_, i) => i).sort((a, b) => mp.nodes[a].score - mp.nodes[b].score);
+  const key = (i) => (diff ? Math.abs(v.diff[i]) : v.signal[i]);
+  const order = mp.nodes.map((_, i) => i).sort((a, b) => key(a) - key(b));
   const nodeEls = [];
-  for (const i of order) {
-    const n = mp.nodes[i];
-    const t = n.role === "source" ? 1 : (n.score - lo) / (hi - lo || 1);
-    nodeEls[i] = svg("circle", { cx: P[i][0], cy: P[i][1], r: rad, fill: shade(t), stroke: C("--card"), "stroke-width": 1.5 }, ng);
-  }
+  let looks = mp.nodes.map(look);
+  for (const i of order) nodeEls[i] = svg("circle", { cx: P[i][0], cy: P[i][1], r: rad, fill: looks[i].fill, stroke: looks[i].stroke, "stroke-width": looks[i].w }, ng);
+  mapRestyle = () => {
+    v = mapView(r); diff = mapMode === "diff" && !!v.diff;
+    looks = mp.nodes.map(look);
+    nodeEls.forEach((c, i) => { c.setAttribute("fill", looks[i].fill); c.setAttribute("stroke", looks[i].stroke); c.setAttribute("stroke-width", looks[i].w); });
+    root.setAttribute("aria-label", diff ? `Contact network of ${N} residues: quantum minus classical signal` : `Contact network of ${N} residues shaded by signal received`);
+  };
   const rg = svg("g", {}, root);
   const ring = (i, dashed) => svg("circle", { cx: P[i][0], cy: P[i][1], r: rad + 4, fill: "none", stroke: dashed ? C("--muted") : C("--ink"),
     "stroke-width": 1.4, "stroke-dasharray": dashed ? "3 2.5" : "none" }, rg);
@@ -560,7 +634,7 @@ function drawMap() {
   let active = -1;
   function setActive(i, e) {
     if (active >= 0) {
-      nodeEls[active].setAttribute("r", rad); nodeEls[active].setAttribute("stroke", C("--card"));
+      nodeEls[active].setAttribute("r", rad); nodeEls[active].setAttribute("stroke", looks[active].stroke);
       edgesOf[active].forEach((k) => edgeEls[k].setAttribute("stroke", C("--edge")));
     }
     active = i;
@@ -570,8 +644,10 @@ function drawMap() {
     const n = mp.nodes[i];
     const role = n.role === "source" ? (mp.from === "active site" ? "  ·  active site" : "  ·  source")
       : n.role === "allosteric" ? "  ·  known allosteric" : "";
-    showTip(e.clientX, e.clientY, `${n.id}  ${n.resname}${role}`,
-      [{ value: fmt(n.score, 4), label: "signal" }, { value: String(n.degree), label: "contacts" }]);
+    showTip(e.clientX, e.clientY, `${n.id}  ${n.resname}${role}`, diff
+      ? [{ value: fmt(v.signal[i], 4), label: "quantum" }, { value: fmt(v.classical[i], 4), label: "classical" },
+         { value: (v.diff[i] >= 0 ? "+" : "") + fmt(v.diff[i], 4), label: "difference" }]
+      : [{ value: fmt(v.signal[i], 4), label: "signal" }, { value: String(n.degree), label: "contacts" }]);
   }
   hit.addEventListener("pointermove", (e) => {
     const box = root.getBoundingClientRect();
@@ -634,6 +710,7 @@ function filesCard(r) {
     el("ul", { class: "files" },
       item(f.graphml, `${name}.graphml`, "Residue contact network"),
       item(f.result, `${name}_result.json`, "Every number behind the figures"),
+      item(f.qvc_csv, `${name}_quantum_vs_classical.csv`, "Quantum minus classical signal for every residue (the map's difference view)"),
       item(f.parameters, `${name}_parameters.json`, "Every setting used, the labels and a code version marker")),
     el("div", { class: "version", text: ver }),
     el("details", { class: "fold" }, el("summary", { text: "Show parameters" }),

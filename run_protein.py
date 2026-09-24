@@ -259,7 +259,8 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         source_id = o["source"] or max(degree, key=degree.get)
         walk_src = [idx[source_id]]
         walk_from = source_id
-    distal, distal_hops = wc.distal_mask(G, nodes, [nodes[i] for i in walk_src], o["distal_fraction"])
+    hops = wc.hop_distance(G, nodes, [nodes[i] for i in walk_src])        # contacts from the start
+    distal, distal_hops = wc.distal_from_hops(hops, o["distal_fraction"])
     if not distal.any():
         raise InputError("the network is too small: no residues lie far from the walk's start.")
 
@@ -279,6 +280,8 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
     flat = wc.sweep_many(hams, jobs, tlist, o["workers"])
     scores = {key: np.array(flat[i * len(gammas):(i + 1) * len(gammas)]) for i, key in enumerate(hams)}
 
+    cwalk = wc.classical_walk(A, walk_src, o["tmax"])     # classical baseline: one eigendecomposition, any rate
+
     # 6) transport metrics
     S = scores["main"]
     transport = S[:, distal].mean(axis=1)
@@ -289,13 +292,22 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         t_ctrl = dict(_control(gammas, curves, t_stats["gain_abs"]),
                       seed_verdicts=[wc.hump_stats(gammas, c)["verdict"] for c in curves])
 
+    # quantum vs classical at every noise level: the classical hopping rate is set so both walks send
+    # the same mean signal to the distal residues, then they are compared residue by residue
+    rates = [wc.matched_rate(cwalk, distal, transport[j]) for j in range(len(gammas))]
+    CM = np.array([cwalk(k) for k in rates])
+    off = [f"{g:g}" for g, c, t in zip(gammas, CM, transport) if abs(c[distal].mean() - t) > 1e-3 * t]
+    if off:                                        # outside the rates the matching searches (1e-3 to 1e3)
+        notes.append(f"the classical walk could not match the quantum walk's spread at gamma {', '.join(off)}; "
+                     "its difference map there compares walks that spread differently")
+
     # 7) allosteric metrics
     a_res = None
     if allo:
         el, pos = allo["eligible"], allo["positive"]
         auc = np.array([wc.roc_auc(s[el], pos[el]) for s in S])
         a_stats = wc.hump_stats(gammas, auc)
-        dist = wc.hop_distance(G, nodes, [nodes[a] for a in allo["rep"]["active"]])
+        dist = hops                                  # the walk starts at the active site here
         prox = np.where(dist >= 0, -dist, -N).astype(float)
         deg = np.array([degree[n] for n in nodes], dtype=float)
         # distance-adjusted: each residue compared only with residues equally far from the
@@ -310,7 +322,7 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         adj_baselines = {"contact degree, same distance": adj_auc(deg)}
         # classical baseline: a random walk on the same contacts from the same start,
         # over a wide range of hopping rates; its best rate is the number to beat
-        C = wc.classical_scores(A, walk_src, CLASSICAL_RATES, o["tmax"])
+        C = np.array([cwalk(k) for k in CLASSICAL_RATES])
         c_raw = np.array([wc.roc_auc(c[el], pos[el]) for c in C])
         c_adj = np.array([adj_auc(c) for c in C])
         baselines["classical walk, best rate"] = float(np.nanmax(c_raw))
@@ -329,10 +341,19 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
             curves = [[adj_auc(s) for s in scores[k]] for k in control_keys]
             adj_ctrl = dict(_control(gammas, curves, adj_stats["gain_abs"]),
                             best_seeds=[float(np.nanmax(c)) for c in curves])
+        # does quantum-minus-classical signal itself pick out the allosteric residues, at the gamma
+        # where the AUC beyond distance peaks? (same shells and permutation test)
+        j = adj_stats["peak_index"]
+        dq = S[j] - CM[j]
+        d_sig = wc.shell_permutation_test([dq], shells, pos & reach, n_perm=o["permutations"], seed=o["seed"])
+        difference = {"gamma": gammas[j], "classical_rate": rates[j], "auc": adj_auc(dq),
+                      "p_value": d_sig["p_value"] if d_sig else None,
+                      "allosteric_quantum_favoured": float((dq[pos] > 0).mean())}
         rep = allo["rep"]
         a_res = {"auc": auc.tolist(), "stats": a_stats, "baselines": baselines, "control": a_ctrl,
                  "adjusted": {"auc": auc_adj.tolist(), "stats": adj_stats, "baselines": adj_baselines,
-                              "control": adj_ctrl, "shells": len(shells), "significance": sig},
+                              "control": adj_ctrl, "shells": len(shells), "significance": sig,
+                              "difference": difference},
                  "classical": classical,
                  "n_active": len(rep["active"]), "n_allosteric": int(pos.sum()),
                  "n_candidates": int(el.sum()),
@@ -340,8 +361,8 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
                  "missing": {"active": rep["active_missing"], "allosteric": rep["allosteric_missing"]},
                  "name_mismatch": rep["name_mismatch"]}
 
-    # 6) signal map + ranking at the best-AUC gamma (labels) or the transport peak
-    peak = a_res["stats"]["peak_index"] if a_res else t_stats["peak_index"]
+    # 8) signal map + ranking where the AUC beyond distance peaks (labels) or at the transport peak
+    peak = a_res["adjusted"]["stats"]["peak_index"] if a_res else t_stats["peak_index"]
     map_scores, map_gamma, map_from = S[peak], gammas[peak], walk_from
     sources_idx = set(walk_src)
     known = set(np.where(allo["positive"])[0]) if allo else set()
@@ -349,9 +370,15 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
     ranking = [{"rank": r + 1, "id": nodes[i], "resname": resnames[i], "score": float(map_scores[i]),
                 "degree": int(degree[nodes[i]]), "known_allosteric": i in known} for r, i in enumerate(order)]
 
-    # 7) files
+    k_match, map_classical = rates[peak], CM[peak]
+    map_diff = map_scores - map_classical
+    qvc = {"gamma": map_gamma, "classical_rate": k_match, "distal_quantum": float(transport[peak]),
+           "distal_classical": float(map_classical[distal].mean()), "classical_rates": rates}
+
+    # 9) files
     files = {"graphml": prefix + ".graphml", "ranking_csv": prefix + "_ranking.csv",
-             "parameters": prefix + "_parameters.json", "result": prefix + "_result.json"}
+             "parameters": prefix + "_parameters.json", "result": prefix + "_result.json",
+             "qvc_csv": prefix + "_quantum_vs_classical.csv"}
     # (file tag, csv column, values, stats, control, y label, baselines, chance line)
     curves = [("hump", "transport_distal_mean", transport, t_stats, t_ctrl, "mean signal reaching distal residues", {}, None)]
     if a_res:
@@ -376,6 +403,13 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
                     "contacts", "known_allosteric"])
         w.writerows([[r["rank"], r["id"], r["resname"], f"{r['score']:.6f}", r["degree"],
                       "yes" if r["known_allosteric"] else ""] for r in ranking])
+    with open(os.path.join(outdir, files["qvc_csv"]), "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["rank", "residue", "resname", "hops_from_start", f"quantum_at_gamma_{map_gamma:g}",
+                    f"classical_at_rate_{k_match:.4g}", "quantum_minus_classical", "known_allosteric"])
+        w.writerows([[r + 1, nodes[i], resnames[i], int(hops[i]), f"{map_scores[i]:.6f}", f"{map_classical[i]:.6f}",
+                      f"{map_diff[i]:.6f}", "yes" if i in known else ""]
+                     for r, i in enumerate(i for i in np.argsort(-map_diff, kind="stable") if i not in sources_idx)])
 
     params = {k: o[k] for k in DEFAULTS if k != "workers"}
     params.update(input=inp if not os.path.isfile(inp) else os.path.basename(inp), cutoff=cutoff, gammas=gammas,
@@ -403,12 +437,16 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         "allosteric": a_res,
         "allo_entries": allo_entries,
         "map": {"nodes": [{"id": n, "resname": resnames[i], "x": float(xy[i, 0]), "y": float(xy[i, 1]),
-                           "score": float(map_scores[i]), "degree": int(degree[n]),
+                           "score": float(map_scores[i]), "classical": float(map_classical[i]),
+                           "diff": float(map_diff[i]), "degree": int(degree[n]),
                            "role": ("source" if i in sources_idx else "allosteric" if i in known else "")}
                           for i, n in enumerate(nodes)],
                 "edges": [[idx[u], idx[v]] for u, v in G.edges()], "gamma": map_gamma, "from": map_from,
+                # both walks at every gamma, so the page can slide through the noise levels
+                "index": peak, "gammas": gammas, "rates": rates,
+                "signal": np.round(S, 7).tolist(), "classical": np.round(CM, 7).tolist(),
                 "aspect": float(max(xy[:, 1].max(), 1e-3) / max(xy[:, 0].max(), 1e-3))},
-        "ranking": ranking, "files": files, "parameters": params,
+        "quantum_vs_classical": qvc, "ranking": ranking, "files": files, "parameters": params,
     }
     with open(os.path.join(outdir, files["result"]), "w") as f:
         json.dump(jsonable({k: v for k, v in result.items() if k != "map"}), f, indent=2)
