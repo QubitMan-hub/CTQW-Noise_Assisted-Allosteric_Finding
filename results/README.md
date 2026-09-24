@@ -38,4 +38,11 @@ Every protein studied so far is listed, including the ones where nothing is foun
 
 ## Summary
 
-(Being generated: the first full run of make_results.py is in progress.)
+| PDB | Protein | beyond distance (γ) | p | classical | best random seed | reading |
+|---|---|---|---|---|---|---|
+| 1T49 | PTP1B | **0.727** (1.78) | **0.014** | 0.655 | 0.712 | significant, beats classical and every seed, best at moderate noise; holds in all 9 settings |
+| 3LSW | GluA3 LBD | 0.746 (0.03) | 0.038 | 0.667 | 0.754 | significant, but no noise benefit and one seed matches it |
+| 1IWH | haemoglobin α | 0.687 (0.56) | 0.176 | 0.627 | 0.628 | not significant (6 allosteric residues); depends on the cutoff |
+| 3CSM | chorismate mutase | 0.496 (0.32) | 0.803 | 0.486 | 0.652 | no signal beyond distance |
+
+The exact numbers are in `proteins.csv` and `sensitivity_*.csv`.
