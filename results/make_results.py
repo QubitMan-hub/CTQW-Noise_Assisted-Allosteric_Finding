@@ -263,6 +263,35 @@ def write_numbers(rows):
             for m in EXTERNAL:
                 put("ext", pid, m, f3(float(r[f"{m}_beyond"])))
                 put("ext", pid, m + "p", fp(float(r[f"{m}_p"])))
+        # do the methods differ, across the held-out proteins? (six methods on the same proteins: test them
+        # together rather than reading the significance counts side by side)
+        import itertools
+        from scipy.stats import chi2, friedmanchisquare, wilcoxon
+        prow = {r["pdb"]: r for r in rows}
+        held = [p for p in HELDOUT if p in erows]
+        auc = {"quantum": [prow[p]["beyond_distance_best"] for p in held],
+               "ew": [prow[p]["energy_weighted_best"] for p in held],
+               "plain": [prow[p]["classical_best"] for p in held],
+               **{m: [float(erows[p][f"{m}_beyond"]) for p in held] for m in EXTERNAL}}
+        sig = {"quantum": [prow[p]["p_value"] < 0.05 for p in held],
+               "ew": [prow[p]["energy_weighted_p_value"] < 0.05 for p in held],
+               "plain": [prow[p]["classical_p_value"] < 0.05 for p in held],
+               **{m: [float(erows[p][f"{m}_p"]) < 0.05 for p in held] for m in EXTERNAL}}
+        B = np.array(list(sig.values()), dtype=int).T                 # proteins x methods
+        k, C, R, N = B.shape[1], B.sum(axis=0), B.sum(axis=1), B.sum()
+        q = (k - 1) * (k * (C ** 2).sum() - N ** 2) / (k * N - (R ** 2).sum())    # Cochran's Q
+        pairs = sorted((wilcoxon(auc[a], auc[b]).pvalue, a, b) for a, b in itertools.combinations(auc, 2))
+        holm = [min(1.0, pv * (len(pairs) - i)) for i, (pv, _, _) in enumerate(pairs)]
+        holm = list(np.maximum.accumulate(holm))
+        for key, val in {"friedp": fp(float(friedmanchisquare(*auc.values()).pvalue)),
+                         "cochranp": fp(float(chi2.sf(q, k - 1))),
+                         "qclosep": fp(float(wilcoxon(auc["quantum"], auc["closeness"]).pvalue)),
+                         "qewp": fp(float(wilcoxon(auc["quantum"], auc["ew"]).pvalue)),
+                         "qplainp": fp(float(wilcoxon(auc["quantum"], auc["plain"]).pvalue)),
+                         "npairs": len(pairs), "minholm": fp(holm[0]),
+                         "minholmpair": f"{pairs[0][1]}/{pairs[0][2]}",
+                         "nholm": sum(h < 0.05 for h in holm)}.items():
+            put("cmp", "held", key, val)
         for name, members in (("val", VALIDATION), ("rep", REPLICATION), ("held", HELDOUT), ("all", PROTEINS)):
             sub = [erows[p] for p in members if p in erows]
             for m in EXTERNAL:

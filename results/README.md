@@ -91,13 +91,16 @@ What this adds up to:
   5 pre-registered replication proteins is (3PXF; chance 23%).
 - In no protein does the quantum walk beat both classical walks (by more than
   0.02) and every random-energy seed: interference adds nothing detectable.
-- Only 1T49 and 3PYY show an effect that needs hydropathy-dependent hopping and
-  survives every control; in 3ZCW, 3H30 and 3PXF a plain classical walk or random
-  energies do as well or better.
+- Described after the fact (not a pre-registered test), only 1T49 and 3PYY show an
+  effect that needs hydropathy-dependent hopping and survives every control; in
+  3ZCW, 3H30 and 3PXF a plain classical walk or random energies do as well or better.
 - Against established predictors under the same test (`external.csv`), closeness
   centrality is significant in 6 of the 15 held-out entries, the quantum walk in 4,
   the energy-weighted walk in 5, the plain classical walk and betweenness in 4 and
-  perturbation-response scanning in 3. The methods succeed on different proteins.
+  perturbation-response scanning in 3. The methods succeed on different proteins,
+  and tested together they do not differ in how often they succeed (Cochran's Q,
+  p = 0.83); no pairwise difference in AUC survives a Holm correction.
+- Everything here is conditional on ALLO's definition of an allosteric site.
 - The 95% intervals are wide (0.16 to 0.60), because each protein has only 5 to 19
   labelled allosteric residues.
 
