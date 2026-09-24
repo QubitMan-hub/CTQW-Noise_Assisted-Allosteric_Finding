@@ -138,6 +138,9 @@ def write_numbers(rows):
                 "shells": res["allosteric"]["adjusted"]["shells"], "elapsed": f"{res['elapsed_s']:.0f}",
                 "clraw": f3(res["allosteric"]["baselines"]["classical walk, best rate"])}.items():
             put("res", pid, key, val)
+        for key, val in {"p": r["p_value"], "clp": r["classical_p_value"], "ewp": r["energy_weighted_p_value"],
+                         "dp": r["difference_p"]}.items():       # with the relation, for "$p\\res{..}{peq}$" in math mode
+            put("res", pid, key + "eq", "<0.001" if val < 0.001 else f"={val:.3f}")
         put("res", pid, "rateheavy", f4(res["quantum_vs_classical"]["classical_rates"][-1]))
     for pid in SENSITIVITY:
         with open(os.path.join(HERE, f"sensitivity_{pid}.csv")) as f:
