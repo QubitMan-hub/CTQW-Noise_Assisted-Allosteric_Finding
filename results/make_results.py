@@ -369,13 +369,13 @@ def fig_transport():
     plt.close(fig)
 
 
-def fig_beyond_distance(proteins=None, name="beyond_distance_all"):
+def fig_beyond_distance(proteins=None, name="beyond_distance_all", cols=3):
     """AUC beyond distance vs noise: quantum walk, random-energy band, both classical walks (all proteins,
     or a chosen few for a larger figure)."""
     proteins = proteins or PROTEINS
     plt = _plt()
-    rows = -(-len(proteins) // 2)
-    fig, axs = plt.subplots(rows, 2, figsize=(12, 3.6 * rows + 0.5), sharex=True, sharey=True, squeeze=False)
+    rows = -(-len(proteins) // cols)
+    fig, axs = plt.subplots(rows, cols, figsize=(6 * cols, 3.6 * rows + 0.5), sharex=True, sharey=True, squeeze=False)
     for ax in axs.flat[len(proteins):]:
         ax.set_visible(False)
     for ax, pid in zip(axs.flat, proteins):
@@ -398,8 +398,10 @@ def fig_beyond_distance(proteins=None, name="beyond_distance_all"):
         ax.set_title(f"{pid}{MARK.get(SET_OF[pid], '')} ({r['summary']['residues']} residues): best {st['peak_value']:.3f} "
                      f"at γ = {st['peak_gamma']:g}, p {'< 0.001' if pv < 0.001 else f'= {pv:.3f}'}", fontsize=10.5)
         ax.set_ylim(0.2, 1.0)
-    for ax in axs[-1]:
+    for c in range(cols):                                   # the lowest panel in each column gets the x axis
+        ax = [a for a in axs[:, c] if a.get_visible()][-1]
         ax.set_xlabel("dephasing rate γ")
+        ax.xaxis.set_tick_params(labelbottom=True)
     for ax in axs[:, 0]:
         ax.set_ylabel("AUC beyond distance")
     fig.legend(*axs[0, 0].get_legend_handles_labels(), loc="upper center", ncol=2, frameon=False)
@@ -542,7 +544,7 @@ def main():
     write_numbers(rows)
     for make in (fig_workflow, fig_transport, fig_beyond_distance, fig_sensitivity, fig_map):
         make()
-    fig_beyond_distance(KEY_PROTEINS, "beyond_distance")
+    fig_beyond_distance(KEY_PROTEINS, "beyond_distance", cols=2)
     fig_methods()
     print("\nWrote results/proteins.csv/.md, results/sensitivity_*.csv/.md and results/figures/")
 
