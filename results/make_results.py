@@ -273,8 +273,9 @@ def write_numbers(rows):
     if os.path.isfile(more):
         with open(more) as f:
             mrows = list(csv.DictReader(f))
-        sig = lambda r: float(r["p_value"]) < 0.05
-        beats_ew = lambda r: float(r["beyond_distance_best"]) > float(r["energy_weighted_best"]) + 0.02
+        sig = lambda r: r["p_value"] != "" and float(r["p_value"]) < 0.05     # blank: no allosteric test
+        beats_ew = lambda r: (r["beyond_distance_best"] != "" and r["energy_weighted_best"] != ""
+                              and float(r["beyond_distance_best"]) > float(r["energy_weighted_best"]) + 0.02)
         put("agg", "more", "n", len(mrows))
         put("agg", "more", "nprot", len({r["pdb"] for r in mrows}))
         put("agg", "more", "nsig", sum(sig(r) for r in mrows))
@@ -399,9 +400,10 @@ def fig_beyond_distance(proteins=None, name="beyond_distance_all", cols=3):
                      f"at γ = {st['peak_gamma']:g}, p {'< 0.001' if pv < 0.001 else f'= {pv:.3f}'}", fontsize=10.5)
         ax.set_ylim(0.2, 1.0)
     for c in range(cols):                                   # the lowest panel in each column gets the x axis
-        ax = [a for a in axs[:, c] if a.get_visible()][-1]
-        ax.set_xlabel("dephasing rate γ")
-        ax.xaxis.set_tick_params(labelbottom=True)
+        shown = [a for a in axs[:, c] if a.get_visible()]
+        if shown:
+            shown[-1].set_xlabel("dephasing rate γ")
+            shown[-1].xaxis.set_tick_params(labelbottom=True)
     for ax in axs[:, 0]:
         ax.set_ylabel("AUC beyond distance")
     fig.legend(*axs[0, 0].get_legend_handles_labels(), loc="upper center", ncol=2, frameon=False)

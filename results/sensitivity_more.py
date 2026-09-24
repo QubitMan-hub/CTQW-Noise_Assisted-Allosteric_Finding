@@ -22,6 +22,12 @@ COLUMNS = ["pdb", "setting", "value", "beyond_distance_best", "best_gamma", "p_v
            "energy_weighted_best"]
 
 
+def fmt_row(r):
+    if r.get("p_value") is None:
+        return "no allosteric test in this setting"
+    return f"{r['beyond_distance_best']:.3f} p {r['p_value']:.3f}"
+
+
 def main():
     with open(os.path.join(HERE, "proteins.csv")) as f:
         sig = [r["pdb"] for r in csv.DictReader(f) if float(r["p_value"]) < 0.05]
@@ -35,7 +41,7 @@ def main():
                 r = sensitivity.one(pid, kw["cutoff"], kw["scale"], False, 5, out, pid, tmax=kw["tmax"])
                 shutil.rmtree(out, ignore_errors=True)
                 rows.append({"pdb": pid, "setting": what, "value": val, **{k: r.get(k) for k in COLUMNS[3:]}})
-                print(pid, what, val, f"{r['beyond_distance_best']:.3f} p {r['p_value']:.3f}", flush=True)
+                print(pid, what, val, fmt_row(r), flush=True)
     with open(os.path.join(HERE, "sensitivity_more.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=COLUMNS)
         w.writeheader()
