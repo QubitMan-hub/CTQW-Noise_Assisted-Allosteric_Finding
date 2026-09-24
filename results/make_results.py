@@ -164,7 +164,12 @@ def write_numbers(rows):
                          "nseed": sum(r["beyond_distance_best"] > r["control_best_seed"] for r in sub),
                          "mean": f3(float(np.mean([r["beyond_distance_best"] for r in sub]))),
                          "meanew": f3(float(np.mean([r["energy_weighted_best"] for r in sub]))),
-                         "meancl": f3(float(np.mean([r["classical_best"] for r in sub])))}.items():
+                         "meancl": f3(float(np.mean([r["classical_best"] for r in sub]))),
+                         "bonf": fp(min(1.0, len(sub) * min(r["p_value"] for r in sub))),
+                         "thump": sum(r["transport_verdict"] == "hump" for r in sub),
+                         "tseedhump": sum(load(r["pdb"], "result")["transport"]["control"]["seed_verdicts"].count("hump")
+                                          for r in sub),
+                         "tseedn": sum(load(r["pdb"], "result")["transport"]["control"]["n_seeds"] for r in sub)}.items():
             put("agg", name, key, val)
     with open(os.path.join(HERE, "numbers.tex"), "w") as f:
         f.write("\n".join(lines) + "\n")
