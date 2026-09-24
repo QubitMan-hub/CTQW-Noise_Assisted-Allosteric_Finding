@@ -39,7 +39,7 @@ def prune(folder):
             shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
 
 
-def run_all(proteins=None, sensitivity=True):
+def run_all(proteins=None, with_grid=True):
     for pid in proteins or PROTEINS:
         print(f"=== {pid}", flush=True)
         r = rp.analyze(pid, os.path.join(RUNS, pid), pid, log=lambda m: print("  " + m, flush=True))
@@ -47,7 +47,7 @@ def run_all(proteins=None, sensitivity=True):
         with open(os.path.join(RUNS, pid, f"{pid}_map.json"), "w") as f:      # both walks at every gamma
             json.dump(rp.jsonable({k: r["map"][k] for k in MAP_KEYS}), f)
         prune(os.path.join(RUNS, pid))
-    for pid in SENSITIVITY if sensitivity else []:
+    for pid in SENSITIVITY if with_grid else []:
         print(f"=== sensitivity {pid}", flush=True)
         out = os.path.join(RUNS, "sensitivity", pid)
         shutil.rmtree(out, ignore_errors=True)
