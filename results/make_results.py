@@ -203,7 +203,7 @@ def fig_workflow():
     plt = _plt()
     fig, ax = plt.subplots(figsize=(12, 2.9))
     ax.set_xlim(0, 12.3)
-    ax.set_ylim(0, 2.9)
+    ax.set_ylim(-0.15, 2.9)
     ax.axis("off")
     boxes = [("Structure", "PDB id or file;\nknown sites from ALLO"),
              ("Contact network", "residues = nodes;\nCβ within 8 Å = edges"),
@@ -220,8 +220,8 @@ def fig_workflow():
         if k < len(boxes) - 1:
             ax.annotate("", xy=(x + w + gap - 0.02, 1.45), xytext=(x + w + 0.02, 1.45),
                         arrowprops=dict(arrowstyle="-|>", color="#222", lw=1.3))
-    ax.text(6.15, 0.18, "Nulls on every run: 5 random-energy seeds; two classical walks on the same contacts (plain, and with "
-            "the energy-dependent rates of the noisy walk); 10,000 label shuffles within distance shells", ha="center", fontsize=9, color="#555")
+    ax.text(6.15, 0.05, "Nulls on every run: 5 random-energy seeds; 10,000 label shuffles within distance shells;\n"
+            "two classical walks on the same contacts (plain, and with the energy-dependent rates of the noisy walk)", ha="center", fontsize=9, color="#555")
     fig.tight_layout()
     _save(fig, "workflow")
     plt.close(fig)
@@ -307,7 +307,7 @@ def fig_sensitivity():
             for k, s in enumerate(SCALES):
                 r = cell[(c, s)]
                 v, p = float(r["beyond_distance_best"]), float(r["p_value"])
-                sg = lambda x: f"{'+' if x >= 0 else '−'}{abs(x):.3f}"
+                sg = lambda x: f"{'+' if round(x, 3) >= 0 else '−'}{abs(x):.3f}"
                 ax.text(k, i, f"{v:.3f}\n{'p < 0.001' if p < 0.001 else f'p = {p:.3f}'}\n{sg(float(r['quantum_minus_classical']))} vs cl."
                         f"\n{sg(float(r['quantum_minus_energy_weighted']))} vs e-w",
                         ha="center", va="center", fontsize=8.5, color="white" if (v - 0.45) / 0.5 > 0.62 else "#111")

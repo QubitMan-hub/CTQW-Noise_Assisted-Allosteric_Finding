@@ -55,6 +55,7 @@ Outputs land in `output/`:
     NAME_allosteric.png/.svg/.csv  allosteric AUC vs noise, with baselines (if labels)
     NAME_adjusted.png/.svg/.csv    the same AUC among residues equally far from the active site
     NAME_ranking.csv               every residue ranked by the signal it receives
+    NAME_energy_weighted.csv       AUC of the energy-weighted classical walk at every noise level (if labels)
     NAME_quantum_vs_classical.csv  per residue: quantum signal, a classical random walk tuned to
                                    reach the far side equally, and their difference
     NAME.graphml                   the residue network
@@ -86,8 +87,13 @@ Outputs land in `output/`:
 - **Classical baseline:** an ordinary continuous-time random walk on the same
   contacts from the same start (dp/dt = -kLp, L the graph Laplacian), solved
   exactly for 17 hopping rates k from 0.01 to 100; its best rate is drawn as a
-  baseline on both allosteric charts. Beating it is the evidence that the
-  quantum part matters. It costs about a second.
+  baseline on both allosteric charts. It costs about a second.
+- **Energy-weighted classical walk:** the walk the noisy quantum walk reduces to
+  when its coherences are dropped: a classical walk on the same contacts whose
+  hopping rates are 2γ/(γ² + ΔE²), with ΔE the site-energy difference, at the
+  same γ. It has the same chemistry and noise but no interference, so the quantum
+  walk has to beat it for interference to matter. Exact at every γ, with its own
+  p-value; about a second more.
 - **Quantum versus classical, residue by residue:** at every noise level the
   classical walk's hopping rate is tuned so it sends exactly as much signal to
   the distal residues as the quantum walk; the difference then shows where the
@@ -99,7 +105,7 @@ Outputs land in `output/`:
 - **Significance:** the allosteric labels are shuffled within each distance shell
   10,000 times (`--permutations`), and each shuffle takes its best score over all
   noise levels, so p accounts for picking the best gamma. The same test is run
-  for the classical walk. No extra walks are needed.
+  for both classical walks. No extra walks are needed.
 - **Null model (on by default, `--no-control` skips it):** the same analysis with random site energies over
   5 seeds, drawn as a mean ± sd band, plus how the real hump's gain ranks among
   the seeds. A hump that random energies reproduce is not specific to the
@@ -112,7 +118,7 @@ Outputs land in `output/`:
   quantum Zeno regime, where transport is suppressed, not a classical random
   walk. So a transport hump alone is expected; the control band shows whether it
   is anything more.
-- The allosteric AUC curve is the test of the paper's claim. Compare its best
+- The allosteric AUC curve is the main test. Compare its best
   value against the proximity baseline and the control band, not only against
   its own ends. The distance-adjusted curve is the stricter test: above 0.5 and
   above the control band means the walk sees something proximity does not.
@@ -133,9 +139,21 @@ Outputs land in `output/`:
 
 ## Results so far
 
-`results/` holds the tables and figure for every protein studied so far
-(positives and nulls), with the per-run data and the one script that rebuilds
-them: `python results/make_results.py`. See `results/README.md`.
+`results/` holds the tables and figures for every protein studied so far: four
+used during development and ten drawn from the ALLO table by a rule fixed before
+any of them was run (`results/select_proteins.py`), positives and nulls alike,
+with the per-run data and the one script that rebuilds them
+(`python results/make_results.py`). In short:
+
+- Beyond distance, the walk from the active site points to the allosteric site
+  significantly in 5 of 14 proteins, and in 3 of the 10 prespecified ones.
+- Where it succeeds, the energy-weighted classical walk does as well, so
+  interference is not what finds the site; in two of the prespecified positives
+  a plain classical walk and random site energies do as well too.
+- Noise-assisted transport appears in every protein and in every random-energy
+  control, so on its own it says nothing about a given protein.
+
+See `results/README.md` for the numbers.
 
 ## Robustness check
 
@@ -143,8 +161,8 @@ them: `python results/make_results.py`. See `results/README.md`.
     python sensitivity.py 1T49 --control        # the same with the control (4x slower)
 
 Reruns the protein over the grid and writes a table (CSV and Markdown) of the
-distance-adjusted AUC, best gamma, whether noise helps, the p-value and the
-classical baseline for every setting.
+distance-adjusted AUC, best gamma, whether noise helps, the p-value and both
+classical baselines for every setting.
 
 ## Speed and exactness
 
