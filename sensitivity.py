@@ -45,32 +45,20 @@ def fmt(v):
     return f"{v:.3f}" if isinstance(v, float) else ("" if v is None else str(v))
 
 
-def main():
-    ap = argparse.ArgumentParser(description="Rerun one protein over several cutoffs and site-energy scales.")
-    ap.add_argument("input", help="PDB/mmCIF file or 4-character PDB id (known sites looked up as usual).")
-    ap.add_argument("--cutoffs", default="7,8,9", help="Contact cutoffs in Å (default 7,8,9).")
-    ap.add_argument("--scales", default="1,3,5", help="Site-energy scales (default 1,3,5).")
-    ap.add_argument("--control", action="store_true", help="Also run the random-energy control for every setting.")
-    ap.add_argument("--control-seeds", type=int, default=5)
-    ap.add_argument("--outdir", default=os.path.join("output", "sensitivity"))
-    a = ap.parse_args()
-    cutoffs = [float(x) for x in a.cutoffs.split(",")]
-    scales = [float(x) for x in a.scales.split(",")]
-    name = os.path.splitext(os.path.basename(a.input))[0]
-    os.makedirs(a.outdir, exist_ok=True)
+def grid(inp, cutoffs, scales, control=False, seeds=5, outdir=os.path.join("output", "sensitivity"), log=print):
+    """Run every cutoff x scale setting; write NAME_sensitivity.csv/.md; return the rows."""
+    name = os.path.splitext(os.path.basename(inp))[0]
+    os.makedirs(outdir, exist_ok=True)
     rows = []
     for c in cutoffs:
         for s in scales:
             prefix = f"{name}_c{c:g}_s{s:g}"
-            try:
-                rows.append(one(a.input, c, s, a.control, a.control_seeds, os.path.join(a.outdir, prefix), prefix))
-            except rp.InputError as e:
-                sys.exit(f"[error] {e}")
+            rows.append(one(inp, c, s, control, seeds, os.path.join(outdir, prefix), prefix))
             r = rows[-1]
-            print(f"cutoff {c:g} scale {s:g}: beyond distance {fmt(r.get('beyond_distance_best'))} "
-                  f"at gamma {fmt(r.get('best_gamma'))}, p {fmt(r.get('p_value'))}, "
-                  f"classical {fmt(r.get('classical_best'))} ({r['seconds']} s)", flush=True)
-    base = os.path.join(a.outdir, f"{name}_sensitivity")
+            log(f"cutoff {c:g} scale {s:g}: beyond distance {fmt(r.get('beyond_distance_best'))} "
+                f"at gamma {fmt(r.get('best_gamma'))}, p {fmt(r.get('p_value'))}, "
+                f"classical {fmt(r.get('classical_best'))} ({r['seconds']} s)")
+    base = os.path.join(outdir, f"{name}_sensitivity")
     with open(base + ".csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=COLUMNS)
         w.writeheader()
@@ -81,7 +69,24 @@ def main():
     lines += ["| " + " | ".join(fmt(r.get(k)) for k in shown) + " |" for r in rows]
     with open(base + ".md", "w") as f:
         f.write("\n".join(lines) + "\n")
-    print("\n" + "\n".join(lines) + f"\n\nWrote {base}.csv and .md")
+    log("\n" + "\n".join(lines) + f"\n\nWrote {base}.csv and .md")
+    return rows
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Rerun one protein over several cutoffs and site-energy scales.")
+    ap.add_argument("input", help="PDB/mmCIF file or 4-character PDB id (known sites looked up as usual).")
+    ap.add_argument("--cutoffs", default="7,8,9", help="Contact cutoffs in Å (default 7,8,9).")
+    ap.add_argument("--scales", default="1,3,5", help="Site-energy scales (default 1,3,5).")
+    ap.add_argument("--control", action="store_true", help="Also run the random-energy control for every setting.")
+    ap.add_argument("--control-seeds", type=int, default=5)
+    ap.add_argument("--outdir", default=os.path.join("output", "sensitivity"))
+    a = ap.parse_args()
+    try:
+        grid(a.input, [float(x) for x in a.cutoffs.split(",")], [float(x) for x in a.scales.split(",")],
+             a.control, a.control_seeds, a.outdir, log=lambda m: print(m, flush=True))
+    except rp.InputError as e:
+        sys.exit(f"[error] {e}")
 
 
 if __name__ == "__main__":

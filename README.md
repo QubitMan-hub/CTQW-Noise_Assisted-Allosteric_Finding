@@ -112,6 +112,12 @@ Outputs land in `output/`:
     --gammas 0,0.1,1,10     your own noise grid (must start at 0)
     --workers 4             parallel processes (default: CPU cores, max 8)
 
+## Results so far
+
+`results/` holds the tables and figure for every protein studied so far
+(positives and nulls), with the per-run data and the one script that rebuilds
+them: `python results/make_results.py`. See `results/README.md`.
+
 ## Robustness check
 
     python sensitivity.py 1T49                  # contact cutoff 7,8,9 x energy scale 1,3,5
