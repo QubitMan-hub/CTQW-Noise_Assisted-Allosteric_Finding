@@ -316,6 +316,7 @@ def table_row(r, run_id, source):
                    beyond_verdict=d["stats"]["verdict"], beyond_gain=d["stats"]["gain_abs"],
                    p_value=sig["p_value"] if sig else None,
                    classical=d["baselines"].get("classical walk, best rate"),
+                   energy_weighted=d["baselines"].get("energy-weighted classical walk, best γ"),
                    control_best=max(d["control"]["best_seeds"]) if d.get("control") else None)
     return row
 

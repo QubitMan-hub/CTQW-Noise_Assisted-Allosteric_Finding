@@ -200,12 +200,18 @@ function takeaways(r) {
     }
     const cl = a.classical;
     if (cl) {
-      const cb = Math.max(...cl.auc_adjusted.filter((x) => x !== null)), diff = best - cb;
+      const cb = Math.max(...cl.auc_adjusted.filter((x) => x !== null));
+      const ew = a.incoherent ? Math.max(...a.incoherent.auc_adjusted.filter((x) => x !== null)) : null;
+      const top = ew !== null && ew > cb ? ew : cb, diff = best - top;
+      const who = top === ew ? `a classical walk with the energy-dependent hopping rates the noisy walk reduces to (${fmt(ew)}, no interference)`
+        : `a classical random walk on the same contacts (${fmt(cb)})`;
+      const both = ew !== null ? `both classical walks: a plain random walk (${fmt(cb)}) and one with the same energy-dependent hopping rates but no interference (${fmt(ew)})`
+        : `the best classical random walk on the same contacts (${fmt(cb)}, over ${cl.rates.length} hopping speeds)`;
       line(diff >= 0.02 && best > 0.55 ? "yes" : diff > -0.02 && best > 0.55 ? "partly" : "no", "Does it need to be quantum?",
         best <= 0.55 ? `Nothing to explain here. A classical random walk scores ${fmt(cb)}.`
-        : diff >= 0.02 ? `It helps. The quantum walk's ${fmt(best)} beats the best classical random walk on the same contacts (${fmt(cb)}, over ${cl.rates.length} hopping speeds).`
-        : diff > -0.02 ? `Not clearly. A classical random walk on the same contacts does about as well (${fmt(cb)}).`
-        : `No. A classical random walk on the same contacts does better (${fmt(cb)}).`);
+        : diff >= 0.02 ? `It helps. The quantum walk's ${fmt(best)} beats ${both}.`
+        : diff > -0.02 ? `Not clearly. ${who[0].toUpperCase() + who.slice(1)} does about as well.`
+        : `No. ${who[0].toUpperCase() + who.slice(1)} does better.`);
     }
     const helps = st.verdict === "hump" && st.gain_abs >= 0.01 && best > 0.55;
     line(helps ? "yes" : "no", "Does a little noise help find it?",
@@ -320,7 +326,7 @@ function allostericCard(r) {
     title: "Allosteric recovery versus noise",
     guide: [
       ["The solid line:", "for each noise level, how well the signal a residue receives picks out the known allosteric residues. 0.5 is a coin flip, 1.0 would put every allosteric residue first."],
-      ["The dotted lines:", "simple guesses to beat. \u2018Proximity\u2019 ranks residues by how few contacts they are from the active site; \u2018degree\u2019 by how many contacts they have; the classical walk is an ordinary random walk on the same contacts."],
+      ["The dotted lines:", "simple guesses to beat. \u2018Proximity\u2019 ranks residues by how few contacts they are from the active site; \u2018degree\u2019 by how many contacts they have; the classical walk is an ordinary random walk on the same contacts; the energy-weighted walk is a classical walk whose hopping rates depend on the site energies and the noise the way the noisy quantum walk's do, but with no interference."],
       ["The grey band:", "the same test with random site energies (mean \u00b1 sd over 5 runs). A solid line inside the band is not about this protein's chemistry."],
       ["Careful:", "signal fades with distance, so this raw score mostly measures closeness. The \u2018Beyond distance\u2019 chart is the fairer test."],
     ],
@@ -329,13 +335,18 @@ function allostericCard(r) {
       `${miss.length ? `Not in the network: ${miss.join(", ")}. ` : ""}${a.name_mismatch.length ? `Name mismatch: ${a.name_mismatch.join("; ")}.` : ""}` }) : null });
 }
 
+function energyNote(a) {
+  const s = a.incoherent && a.incoherent.significance_adjusted;
+  return s ? ` Energy-weighted classical walk (no interference): best ${fmt(s.observed_best)} at γ = ${fmtGamma(a.incoherent.best_gamma_adjusted)}, p = ${fmtP(s.p_value)}.` : "";
+}
+
 function adjustedCard(r) {
   const d = r.allosteric.adjusted;
   return curveCard(r, { values: d.auc, stats: d.stats, control: d.control, baselines: d.baselines,
     id: "chart-adj", tag: "adjusted", yLabel: "ROC AUC, same distance",
     title: "Beyond distance",
     extra: d.significance ? el("p", { class: "note" }, "Significance: ", el("strong", { text: `p = ${fmtP(d.significance.p_value)}` }),
-      `. The allosteric labels were shuffled within each distance group ${d.significance.n_perm.toLocaleString()} times, and each time the best score over all noise levels was taken, so picking the best γ is accounted for (shuffles reach ${fmt(d.significance.null_95)} one time in twenty). Classical random walk: best ${fmt(r.allosteric.classical.significance_adjusted.observed_best)}, p = ${fmtP(r.allosteric.classical.significance_adjusted.p_value)}.`) : null,
+      `. The allosteric labels were shuffled within each distance group ${d.significance.n_perm.toLocaleString()} times, and each time the best score over all noise levels was taken, so picking the best γ is accounted for (shuffles reach ${fmt(d.significance.null_95)} one time in twenty). Classical random walk: best ${fmt(r.allosteric.classical.significance_adjusted.observed_best)}, p = ${fmtP(r.allosteric.classical.significance_adjusted.p_value)}.${energyNote(r.allosteric)}`) : null,
     guide: [
       ["The idea:", "residues are grouped by how many contacts they are from the active site, and each is only ranked against its own group. Being close no longer helps."],
       ["0.5 line:", "what closeness alone scores here. Above it, the walk sees something extra about where the allosteric site is; below it, the walk points away from it."],
@@ -417,6 +428,7 @@ function drawChart(c) {
     transform: `rotate(-90 12 ${m.t + ih / 2})`, text: c.yLabel }, root);
   if (c.chance !== null) svg("line", { x1: m.l, x2: W - m.r, y1: Y(c.chance), y2: Y(c.chance), stroke: C("--line-2"), "stroke-width": 1 }, root);
   const short = { "proximity to active site": "proximity", "contact degree": "degree", "classical walk, best rate": "classical walk",
+    "energy-weighted classical walk, best γ": "energy-weighted walk",
     "contact degree, same distance": "degree, same distance" };
   let lastY = -Infinity;                  // top to bottom, nudging labels apart so close baselines stay readable
   for (const b of [...c.baselines].sort((p, q) => q.value - p.value)) {
@@ -953,12 +965,15 @@ function setView(view, { scroll = true } = {}) {
 }
 document.querySelectorAll(".view-tab").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
 
+const bestClassical = (r) => Math.max(r.classical, r.energy_weighted ?? -Infinity);
+
 const TABLE_COLS = [
   { key: "name", label: "Protein" },
   { key: "residues", label: "Residues", num: true },
   { key: "beyond", label: "Beyond distance", num: true, hint: "0.5 = closeness alone" },
   { key: "p_value", label: "p", num: true },
   { key: "classical", label: "Classical", num: true },
+  { key: "energy_weighted", label: "Energy-weighted", num: true, hint: "classical, no interference" },
   { key: "beyond_gamma", label: "Noise helps" },
   { key: "transport_verdict", label: "Transport" },
   { key: "control", label: "Control" },
@@ -994,13 +1009,13 @@ function renderTable() {
   });
   const lab = tableRows.filter((r) => r.beyond != null);
   const withP = lab.filter((r) => r.p_value != null), sig = withP.filter((r) => r.p_value < 0.05);
-  const withC = lab.filter((r) => r.classical != null), beat = withC.filter((r) => r.beyond > r.classical);
+  const withC = lab.filter((r) => r.classical != null), beat = withC.filter((r) => r.beyond > bestClassical(r));
   $("#table-summary").replaceChildren(...[
     el("span", {}, "walks", el("strong", { text: String(tableRows.length) })),
     el("span", {}, "proteins", el("strong", { text: String(new Set(tableRows.map((r) => r.name)).size) })),
     lab.length ? el("span", {}, "with a known site", el("strong", { text: String(lab.length) })) : null,
     withP.length ? el("span", {}, "p < 0.05", el("strong", { text: `${sig.length} of ${withP.length}` })) : null,
-    withC.length ? el("span", {}, "beat classical", el("strong", { text: `${beat.length} of ${withC.length}` })) : null].filter(Boolean));
+    withC.length ? el("span", {}, "beat both classical", el("strong", { text: `${beat.length} of ${withC.length}` })) : null].filter(Boolean));
   $("#table-empty").hidden = tableRows.length > 0;
   const head = el("tr", {}, TABLE_COLS.map((c) => {
     const th = el("th", { class: c.num ? "num" : "", "data-key": c.key, title: c.hint || "" },
@@ -1022,6 +1037,7 @@ function renderTable() {
       el("td", { class: "num" + (r.beyond != null && r.beyond >= 0.6 ? " strong-cell" : ""), text: r.beyond != null ? fmt(r.beyond) : dash }),
       el("td", { class: "num" + (r.p_value != null && r.p_value < 0.05 ? " strong-cell" : ""), text: r.p_value != null ? fmtP(r.p_value) : dash }),
       el("td", { class: "num", text: r.classical != null ? fmt(r.classical) : dash }),
+      el("td", { class: "num", text: r.energy_weighted != null ? fmt(r.energy_weighted) : dash }),
       el("td", {}, r.beyond_verdict === "hump" && r.beyond_gain >= 0.01 ? el("span", { class: "chip-mini solid", text: `γ ${fmtGamma(r.beyond_gamma)}` }) : dash),
       el("td", {}, el("span", { class: "chip-mini", text: verdictShort(r.transport_verdict, r.transport_gamma) })),
       el("td", { text: r.control ? "yes" : "no" }),
@@ -1044,9 +1060,11 @@ function rowDescription(r) {
       r.beyond <= 0.55 ? `Finds the allosteric site beyond closeness: no (${fmt(r.beyond)}, where 0.5 is closeness alone).`
       : `Finds the allosteric site beyond closeness: scores ${fmt(r.beyond)}${r.p_value != null ? ` (p = ${fmtP(r.p_value)}${sig ? ", unlikely to be luck" : ", could still be luck"})` : ""}.`);
     if (r.classical != null) {
-      const d = r.beyond - r.classical;
+      const top = bestClassical(r), d = r.beyond - top;
+      const what = r.energy_weighted != null ? `the best classical walk (plain ${fmt(r.classical)}, energy-weighted ${fmt(r.energy_weighted)}) scores ${fmt(top)}`
+        : `the best classical random walk scores ${fmt(r.classical)}`;
       say(d >= 0.02 && r.beyond > 0.55 ? "yes" : d > -0.02 && r.beyond > 0.55 ? "partly" : "no",
-        `Needs the quantum walk: the best classical random walk scores ${fmt(r.classical)}${d >= 0.02 ? ", lower" : d > -0.02 ? ", about the same" : ", higher"}.`);
+        `Needs the quantum walk: ${what}${d >= 0.02 ? ", lower" : d > -0.02 ? ", about the same" : ", higher"}.`);
     }
     if (r.control_best != null)
       say(r.beyond > r.control_best ? "yes" : "no", `About this protein's chemistry: the best random-energy run scores ${fmt(r.control_best)}${r.beyond > r.control_best ? ", lower" : ", as high or higher"}.`);

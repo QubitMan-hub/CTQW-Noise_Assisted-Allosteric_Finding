@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """make_results.py - rebuild every table and figure in results/.
 
-    python results/make_results.py            # rerun all walks (~25 min on 4 cores), then tables + figure
+    python results/make_results.py            # rerun all walks (about 1.5 h on 4 cores), then tables + figures
     python results/make_results.py --reuse    # rebuild tables + figure from results/runs/ only
 
 Every protein studied is reported, including the ones where nothing is found.
@@ -19,7 +19,9 @@ sys.path.insert(0, os.path.dirname(HERE))
 import run_protein as rp      # noqa: E402
 import sensitivity            # noqa: E402
 
-PROTEINS = ["1T49", "3LSW", "1IWH", "3CSM"]      # every protein studied so far, positives and nulls
+DEVELOPMENT = ["1T49", "3LSW", "1IWH", "3CSM"]   # picked during development, positives and nulls
+VALIDATION = ["2RD5", "3HO6", "4B1F", "4BBG", "4PFK", "3PYY"]   # prespecified: select_proteins.py
+PROTEINS = DEVELOPMENT + VALIDATION
 SENSITIVITY = ["1T49", "1IWH"]                   # cutoff x scale grid for the two with a noise hump
 CUTOFFS, SCALES = [7.0, 8.0, 9.0], [1.0, 3.0, 5.0]
 RUNS = os.path.join(HERE, "runs")
@@ -73,8 +75,9 @@ def protein_table():
         a = r["allosteric"]
         d, st = a["adjusted"], a["adjusted"]["stats"]
         cl = d["baselines"]["classical walk, best rate"]
+        ew = a["incoherent"]
         rows.append({
-            "pdb": pid, "protein": r["parameters"]["labels_used"]["protein"], "residues": r["summary"]["residues"],
+            "pdb": pid, "set": "development" if pid in DEVELOPMENT else "validation", "protein": r["parameters"]["labels_used"]["protein"], "residues": r["summary"]["residues"],
             "active_residues": a["n_active"], "allosteric_residues": a["n_allosteric"],
             "raw_auc_best": a["stats"]["peak_value"], "proximity_auc": a["baselines"]["proximity to active site"],
             "beyond_distance_best": st["peak_value"], "best_gamma": st["peak_gamma"],
@@ -83,6 +86,10 @@ def protein_table():
             "p_value": d["significance"]["p_value"],
             "classical_best": cl, "quantum_minus_classical": st["peak_value"] - cl,
             "classical_p_value": a["classical"]["significance_adjusted"]["p_value"],
+            "energy_weighted_best": ew["significance_adjusted"]["observed_best"],
+            "energy_weighted_gamma": ew["best_gamma_adjusted"],
+            "energy_weighted_p_value": ew["significance_adjusted"]["p_value"],
+            "quantum_minus_energy_weighted": st["peak_value"] - ew["significance_adjusted"]["observed_best"],
             "control_best_seed": max(d["control"]["best_seeds"]),
             "transport_verdict": r["transport"]["stats"]["verdict"],
             "transport_peak_gamma": r["transport"]["stats"]["peak_gamma"],
@@ -119,7 +126,9 @@ def write_numbers(rows):
                 "beyond": f3(r["beyond_distance_best"]), "gamma": f"{r['best_gamma']:g}",
                 "qend": f3(r["quantum_end"]), "dend": f3(r["dephased_end"]), "gain": f3(r["noise_gain"]),
                 "p": fp(r["p_value"]), "classical": f3(r["classical_best"]), "clp": fp(r["classical_p_value"]),
-                "margin": f"{r['quantum_minus_classical']:+.3f}", "seedbest": f3(r["control_best_seed"]),
+                "margin": f"{r['quantum_minus_classical']:+.3f}",
+                "ew": f3(r["energy_weighted_best"]), "ewp": fp(r["energy_weighted_p_value"]),
+                "ewgamma": f"{r['energy_weighted_gamma']:g}", "ewmargin": f"{r['quantum_minus_energy_weighted']:+.3f}", "seedbest": f3(r["control_best_seed"]),
                 "tgamma": f"{r['transport_peak_gamma']:g}", "tgain": f"{100 * t['stats']['gain_rel']:.1f}",
                 "tseeds": f"{t['control']['seed_verdicts'].count('hump')}", "tn": f"{t['control']['n_seeds']}",
                 "dgamma": f"{r['difference_gamma']:g}", "drate": f"{r['difference_rate']:.3g}",
@@ -134,12 +143,29 @@ def write_numbers(rows):
             srows = list(csv.DictReader(f))
         ps = [float(x["p_value"]) for x in srows]
         margins = [float(x["quantum_minus_classical"]) for x in srows]
+        ewm = [float(x["quantum_minus_energy_weighted"]) for x in srows]
         best = [float(x["beyond_distance_best"]) for x in srows]
         for key, val in {"n": len(srows), "nsig": sum(p < 0.05 for p in ps), "nbeat": sum(mg > 0 for mg in margins),
                          "nhump": sum(x["noise_hump"] == "yes" for x in srows), "pmin": fp(min(ps)), "pmax": fp(max(ps)),
                          "bmin": f3(min(best)), "bmax": f3(max(best)), "mmin": f"{min(margins):+.3f}",
-                         "mmax": f"{max(margins):+.3f}"}.items():
+                         "mmax": f"{max(margins):+.3f}", "ewmin": f"{min(ewm):+.3f}", "ewmax": f"{max(ewm):+.3f}",
+                         "nbeatew": sum(mg > 0.02 for mg in ewm)}.items():
             put("sens", pid, key, val)
+    # the prespecified validation set as a whole: how many significant, and how often that happens by chance
+    from scipy.stats import binom
+    for name, members in (("dev", DEVELOPMENT), ("val", VALIDATION), ("all", PROTEINS)):
+        sub = [r for r in rows if r["pdb"] in members]
+        nsig = sum(r["p_value"] < 0.05 for r in sub)
+        for key, val in {"n": len(sub), "nsig": nsig, "binp": fp(float(binom.sf(nsig - 1, len(sub), 0.05))),
+                         "nbeatcl": sum(r["quantum_minus_classical"] > 0.02 for r in sub),
+                         "nbeatew": sum(r["quantum_minus_energy_weighted"] > 0.02 for r in sub),
+                         "nsigew": sum(r["energy_weighted_p_value"] < 0.05 for r in sub),
+                         "nhump": sum(r["noise_gain"] > 0.01 for r in sub),
+                         "nseed": sum(r["beyond_distance_best"] > r["control_best_seed"] for r in sub),
+                         "mean": f3(float(np.mean([r["beyond_distance_best"] for r in sub]))),
+                         "meanew": f3(float(np.mean([r["energy_weighted_best"] for r in sub]))),
+                         "meancl": f3(float(np.mean([r["classical_best"] for r in sub])))}.items():
+            put("agg", name, key, val)
     with open(os.path.join(HERE, "numbers.tex"), "w") as f:
         f.write("\n".join(lines) + "\n")
 
@@ -178,7 +204,7 @@ def fig_workflow():
              ("Hamiltonian", "H = A + s·diag(ε)\nε: z-scored hydropathy"),
              ("Dephased walk", "ρ from the active site\n18 rates γ, 0 to 100"),
              ("Scores", "signal per residue\n= ∫ ρ_ii dt, t ≤ 30"),
-             ("Tests", "AUC beyond distance,\np; classical walk;\nrandom energies")]
+             ("Tests", "AUC beyond distance,\np; classical walks;\nrandom energies")]
     w, gap = 1.75, 0.3
     for k, (title, body) in enumerate(boxes):
         x = 0.1 + k * (w + gap)
@@ -188,8 +214,8 @@ def fig_workflow():
         if k < len(boxes) - 1:
             ax.annotate("", xy=(x + w + gap - 0.02, 1.45), xytext=(x + w + 0.02, 1.45),
                         arrowprops=dict(arrowstyle="-|>", color="#222", lw=1.3))
-    ax.text(6.15, 0.18, "Nulls on every run: 5 random-energy seeds; a classical random walk on the same contacts; "
-            "10,000 label shuffles within distance shells", ha="center", fontsize=9, color="#555")
+    ax.text(6.15, 0.18, "Nulls on every run: 5 random-energy seeds; two classical walks on the same contacts (plain, and with "
+            "the energy-dependent rates of the noisy walk); 10,000 label shuffles within distance shells", ha="center", fontsize=9, color="#555")
     fig.tight_layout()
     _save(fig, "workflow")
     plt.close(fig)
@@ -198,8 +224,8 @@ def fig_workflow():
 def fig_transport():
     """Transport to the distal residues versus noise, with the random-energy band."""
     plt = _plt()
-    fig, axs = plt.subplots(1, 4, figsize=(13, 3.3), sharex=True)
-    for ax, pid in zip(axs, PROTEINS):
+    fig, axs = plt.subplots(2, 5, figsize=(15, 6.2), sharex=True)
+    for ax, pid in zip(axs.flat, PROTEINS):
         r = load(pid, "result")
         g, t = np.array(r["gammas"]), r["transport"]
         m, sd = np.array(t["control"]["mean"]), np.array(t["control"]["sd"])
@@ -209,11 +235,13 @@ def fig_transport():
         ax.plot(g, t["distal_mean"], color="#111", lw=2, marker="o", ms=3, mec="white", mew=0.5,
                 label="hydropathy site energies")
         st = t["stats"]
-        ax.set_title(f"{pid}: peak at γ = {st['peak_gamma']:g}", fontsize=10.5)
+        ax.set_title(f"{pid}{'*' if pid in VALIDATION else ''}: peak at γ = {st['peak_gamma']:g}", fontsize=10.5)
+    for ax in axs[1]:
         ax.set_xlabel("dephasing rate γ")
-    axs[0].set_ylabel("mean signal on distal residues")
-    fig.legend(*axs[0].get_legend_handles_labels(), loc="upper center", ncol=2, frameon=False)
-    fig.tight_layout(rect=(0, 0, 1, 0.9))
+    for ax in axs[:, 0]:
+        ax.set_ylabel("mean signal on distal residues")
+    fig.legend(*axs[0, 0].get_legend_handles_labels(), loc="upper center", ncol=2, frameon=False)
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
     _save(fig, "transport")
     plt.close(fig)
 
@@ -221,7 +249,7 @@ def fig_transport():
 def fig_beyond_distance():
     """AUC beyond distance vs noise for every protein: quantum walk, random-energy band, classical walk."""
     plt = _plt()
-    fig, axs = plt.subplots(2, 2, figsize=(12, 8.4), sharex=True, sharey=True)
+    fig, axs = plt.subplots(5, 2, figsize=(12, 18.5), sharex=True, sharey=True)
     for ax, pid in zip(axs.flat, PROTEINS):
         r = load(pid, "result")
         g, d = np.array(r["gammas"]), r["allosteric"]["adjusted"]
@@ -231,20 +259,23 @@ def fig_beyond_distance():
         ax.plot(g, m, color="#8a8a8a", ls="--", lw=1.6, label="random site energies (mean ± sd, 5 seeds)")
         ax.plot(g, d["auc"], color="#111", lw=2.2, marker="o", ms=3.5, mec="white", mew=0.6,
                 label="quantum walk, hydropathy site energies")
+        ax.plot(g[1:], r["allosteric"]["incoherent"]["auc_adjusted"][1:], color="#555", lw=1.5, ls="-.",
+                label="energy-weighted classical walk (same γ, no interference)")
         ax.axhline(d["baselines"]["classical walk, best rate"], color="#444", lw=1.3, ls=(0, (1, 1.5)),
-                   label="classical random walk (best hopping rate)")
+                   label="plain classical random walk (best hopping rate)")
         ax.axhline(0.5, color="#bbb", lw=1)
         ax.text(0.012, 0.506, "closeness alone", fontsize=8.5, color="#777")
         st = d["stats"]
-        ax.set_title(f"{pid} ({r['summary']['residues']} residues): best {st['peak_value']:.3f} "
-                     f"at γ = {st['peak_gamma']:g}, p = {d['significance']['p_value']:.3f}", fontsize=10.5)
-        ax.set_ylim(0.3, 0.9)
+        pv = d["significance"]["p_value"]
+        ax.set_title(f"{pid}{'*' if pid in VALIDATION else ''} ({r['summary']['residues']} residues): best {st['peak_value']:.3f} "
+                     f"at γ = {st['peak_gamma']:g}, p {'< 0.001' if pv < 0.001 else f'= {pv:.3f}'}", fontsize=10.5)
+        ax.set_ylim(0.2, 1.0)
     for ax in axs[1]:
         ax.set_xlabel("dephasing rate γ")
     for ax in axs[:, 0]:
         ax.set_ylabel("ROC AUC among residues equally far\nfrom the active site")
-    fig.legend(*axs[0, 0].get_legend_handles_labels(), loc="upper center", ncol=3, frameon=False)
-    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    fig.legend(*axs[0, 0].get_legend_handles_labels(), loc="upper center", ncol=2, frameon=False)
+    fig.tight_layout(rect=(0, 0, 1, 0.965))
     _save(fig, "beyond_distance")
     plt.close(fig)
 
@@ -252,7 +283,7 @@ def fig_beyond_distance():
 def fig_sensitivity():
     """Cutoff x scale grids: best AUC beyond distance (shade), p and the margin over the classical walk."""
     plt = _plt()
-    fig, axs = plt.subplots(1, len(SENSITIVITY), figsize=(5.2 * len(SENSITIVITY), 4.2))
+    fig, axs = plt.subplots(1, len(SENSITIVITY), figsize=(5.6 * len(SENSITIVITY), 4.8))
     for ax, pid in zip(np.atleast_1d(axs), SENSITIVITY):
         with open(os.path.join(HERE, f"sensitivity_{pid}.csv")) as f:
             rows = list(csv.DictReader(f))
@@ -263,9 +294,10 @@ def fig_sensitivity():
             for k, s in enumerate(SCALES):
                 r = cell[(c, s)]
                 v, p = float(r["beyond_distance_best"]), float(r["p_value"])
-                margin = float(r["quantum_minus_classical"])
-                ax.text(k, i, f"{v:.3f}\n{'p < 0.001' if p < 0.001 else f'p = {p:.3f}'}\n{'+' if margin >= 0 else '−'}{abs(margin):.3f} vs cl.",
-                        ha="center", va="center", fontsize=9, color="white" if (v - 0.45) / 0.5 > 0.62 else "#111")
+                sg = lambda x: f"{'+' if x >= 0 else '−'}{abs(x):.3f}"
+                ax.text(k, i, f"{v:.3f}\n{'p < 0.001' if p < 0.001 else f'p = {p:.3f}'}\n{sg(float(r['quantum_minus_classical']))} vs cl."
+                        f"\n{sg(float(r['quantum_minus_energy_weighted']))} vs e-w",
+                        ha="center", va="center", fontsize=8.5, color="white" if (v - 0.45) / 0.5 > 0.62 else "#111")
         ax.set_xticks(range(len(SCALES)), [f"{s:g}" for s in SCALES])
         ax.set_yticks(range(len(CUTOFFS)), [f"{c:g} Å" for c in CUTOFFS])
         ax.set_xlabel("site-energy scale s")
@@ -334,8 +366,8 @@ def main():
         run_all()
     rows = protein_table()
     write_table(rows, os.path.join(HERE, "proteins"),
-                ["pdb", "residues", "allosteric_residues", "beyond_distance_best", "best_gamma", "noise_gain",
-                 "p_value", "classical_best", "control_best_seed", "difference_auc", "difference_p"])
+                ["pdb", "set", "residues", "allosteric_residues", "beyond_distance_best", "best_gamma", "noise_gain",
+                 "p_value", "classical_best", "energy_weighted_best", "control_best_seed", "difference_auc", "difference_p"])
     for pid in SENSITIVITY:
         for ext in ("csv", "md"):
             shutil.copy(os.path.join(RUNS, "sensitivity", pid, f"{pid}_sensitivity.{ext}"),

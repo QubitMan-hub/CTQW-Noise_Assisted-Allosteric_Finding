@@ -309,21 +309,15 @@ def shell_percentile(scores, shells, n):
     return out
 
 
-def classical_walk(A, source_idx, tmax):
-    """Classical baseline: a continuous-time random walk on the same contacts,
-    dp/dt = -k L p with L the graph Laplacian of the squared couplings A_ij^2 (the
-    rates a strongly dephased quantum walk reduces to; the same as A for an
-    unweighted network), started from the same (mixed) sources. Returns a function
-    k -> time-integrated occupation up to tmax, exact, from one eigendecomposition
-    of L (so every hopping rate k costs almost nothing); scores.mean_on(mask) gives a
-    faster k -> mean over some residues. Site energies do not enter: a classical
-    walker has no phases to shift."""
-    A = A.toarray() if sparse.issparse(A) else np.asarray(A, dtype=float)
-    W = A * A
+def _laplacian_walk(W, source_idx, tmax):
+    """Classical walk dp/dt = -k L p with L the Laplacian of the symmetric rates W,
+    from the (mixed) sources. Returns k -> time-integrated occupation up to tmax,
+    exact from one eigendecomposition of L (so every k costs almost nothing);
+    scores.mean_on(mask) gives a faster k -> mean over some residues."""
     w, V = np.linalg.eigh(np.diag(W.sum(axis=1)) - W)
     w = np.clip(w, 0.0, None)
     src = [source_idx] if np.isscalar(source_idx) else list(source_idx)
-    p0 = np.zeros(len(A))
+    p0 = np.zeros(len(W))
     p0[src] = 1.0 / len(src)
     c = V.T @ p0
 
@@ -339,6 +333,37 @@ def classical_walk(A, source_idx, tmax):
         return lambda k: float(u @ integral(k))
     scores.mean_on = mean_on
     return scores
+
+
+def classical_walk(A, source_idx, tmax):
+    """Classical baseline: a continuous-time random walk on the same contacts,
+    dp/dt = -k L p with L the graph Laplacian of the squared couplings A_ij^2 (the
+    same as A for an unweighted network), started from the same (mixed) sources.
+    Returns k -> time-integrated occupation up to tmax (see _laplacian_walk).
+    Site energies do not enter."""
+    A = A.toarray() if sparse.issparse(A) else np.asarray(A, dtype=float)
+    return _laplacian_walk(A * A, source_idx, tmax)
+
+
+def incoherent_scores(H, source_idx, gammas, tmax):
+    """Energy-weighted classical walk: the rate equation the dephased walk reduces to
+    when its coherences are eliminated, dp_i/dt = sum_j k_ij (p_j - p_i) with
+    k_ij = 2 gamma H_ij^2 / (gamma^2 + (H_ii - H_jj)^2). It has the same contacts, site
+    energies and noise rate as the quantum walk but no interference, so it separates
+    what coherence adds from what energy-dependent hopping adds. Exact at every gamma
+    (one eigendecomposition each); shape (len(gammas), N), a row of nan at gamma = 0,
+    where it does not move."""
+    H = H.toarray() if sparse.issparse(H) else np.asarray(H)
+    H = np.real(H).astype(float)
+    E = np.diag(H)
+    J2 = H * H
+    np.fill_diagonal(J2, 0.0)
+    dE2 = (E[:, None] - E[None, :]) ** 2
+    out = np.full((len(gammas), len(H)), np.nan)
+    for j, g in enumerate(gammas):
+        if g > 0:
+            out[j] = _laplacian_walk(2 * g * J2 / (g * g + dE2), source_idx, tmax)(1.0)
+    return out
 
 
 def classical_scores(A, source_idx, rates, tmax):

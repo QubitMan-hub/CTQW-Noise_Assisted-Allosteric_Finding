@@ -112,6 +112,29 @@ def test_classical_scores_match_brute_force():
         assert np.max(np.abs(exact - brute)) < 1e-5
 
 
+def test_incoherent_walk_is_the_dephased_limit():
+    """The energy-weighted classical walk solves its rate equation exactly, and the
+    dephased quantum walk approaches it when the noise is strong."""
+    from scipy.linalg import expm
+    A, names = protein_like()
+    H = wc.build_hamiltonian(A, names, "hydropathy", 3.0)
+    E = np.real(np.diag(H))
+    tl = np.linspace(0, 5.0, 2001)
+    g = 2.0
+    K = 2 * g * np.asarray(A, dtype=float) ** 2 / (g * g + (E[:, None] - E[None, :]) ** 2)
+    L = np.diag(K.sum(axis=1)) - K
+    p0 = np.zeros(len(A)); p0[[0, 3]] = 0.5
+    traj = np.array([expm(-L * t) @ p0 for t in tl]).T
+    brute = np.trapezoid(traj, tl, axis=1) if hasattr(np, "trapezoid") else np.trapz(traj, tl, axis=1)
+    rows = wc.incoherent_scores(H, [0, 3], [0.0, g], 5.0)
+    assert np.all(np.isnan(rows[0]))
+    assert np.max(np.abs(rows[1] - brute)) < 1e-5
+    tl = np.linspace(0, 30.0, 200)
+    q = wc.visiting_scores(wc.run_walk(H, [0, 3], 100.0, tl), tl)
+    c = wc.incoherent_scores(H, [0, 3], [100.0], 30.0)[0]
+    assert np.max(np.abs(q - c)) < 0.02 * np.max(q)
+
+
 def test_permutation_test_observed_matches_auc():
     rng = np.random.default_rng(3)
     n = 40

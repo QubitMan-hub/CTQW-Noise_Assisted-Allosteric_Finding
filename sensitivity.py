@@ -16,7 +16,8 @@ import argparse, csv, os, sys, time
 import run_protein as rp
 
 COLUMNS = ["cutoff", "scale", "residues", "contacts", "beyond_distance_best", "best_gamma", "noise_hump",
-           "gain_over_ends", "p_value", "classical_best", "quantum_minus_classical", "raw_best", "proximity",
+           "gain_over_ends", "p_value", "classical_best", "quantum_minus_classical",
+           "energy_weighted_best", "quantum_minus_energy_weighted", "raw_best", "proximity",
            "transport_verdict", "control_best_seed", "seconds"]
 
 
@@ -31,11 +32,13 @@ def one(inp, cutoff, scale, control, seeds, outdir, prefix):
     if a:
         d, st = a["adjusted"], a["adjusted"]["stats"]
         cb = d["baselines"]["classical walk, best rate"]
+        ew = d["baselines"]["energy-weighted classical walk, best γ"]
         row.update(beyond_distance_best=st["peak_value"], best_gamma=st["peak_gamma"],
                    noise_hump="yes" if st["verdict"] == "hump" else "no",
                    gain_over_ends=st["gain_abs"] if st["verdict"] == "hump" else 0.0,
                    p_value=d["significance"]["p_value"] if d["significance"] else None,
                    classical_best=cb, quantum_minus_classical=st["peak_value"] - cb,
+                   energy_weighted_best=ew, quantum_minus_energy_weighted=st["peak_value"] - ew,
                    raw_best=a["stats"]["peak_value"], proximity=a["baselines"]["proximity to active site"],
                    control_best_seed=max(d["control"]["best_seeds"]) if d["control"] else None)
     return row

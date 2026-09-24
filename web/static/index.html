@@ -184,7 +184,8 @@
         <ul class="guide-list">
           <li><strong>Beyond distance:</strong> how well the walk ranks the known allosteric residues against residues equally far from the active site. 0.5 is what closeness alone gives.</li>
           <li><strong>p:</strong> the chance of doing that well with shuffled labels. Below 0.05 is the usual bar.</li>
-          <li><strong>Classical:</strong> the best score of an ordinary random walk on the same contacts. The quantum walk should beat it.</li>
+          <li><strong>Classical:</strong> the best score of an ordinary random walk on the same contacts.</li>
+          <li><strong>Energy-weighted:</strong> the best score of a classical walk whose hopping rates depend on the site energies and the noise, the way the noisy quantum walk's do, but with no interference. Beating both classical walks is what shows the quantum part matters.</li>
           <li><strong>Noise helps:</strong> the γ where a moderate amount of noise gives the best score, or a dash if it does not help.</li>
           <li><strong>Transport:</strong> whether noise helps the signal reach the far side of the protein (common in any network).</li>
           <li>Rows in grey have had their full results cleared (only the last 30 are kept); their numbers stay.</li>
