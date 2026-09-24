@@ -101,4 +101,10 @@ What this adds up to:
 - The 95% intervals are wide (0.16 to 0.60), because each protein has only 5 to 19
   labelled allosteric residues.
 
+- Changing one setting at a time for the six significant proteins
+  (`sensitivity_more.csv`), 29 of 36 runs stay significant: the time window T
+  hardly matters (12 of 12), the energy scale a little (10 of 12), the contact
+  cutoff most (7 of 12). 1T49, 3PYY and 3H30 hold in every setting; 3LSW holds in
+  only 2 of 6.
+
 The exact numbers are in the CSV files.
