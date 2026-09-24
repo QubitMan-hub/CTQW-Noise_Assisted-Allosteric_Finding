@@ -209,6 +209,7 @@ def write_numbers(rows):
                          "nbeatcl": sum(r["quantum_minus_classical"] > 0.02 for r in sub),
                          "nbeatew": sum(r["quantum_minus_energy_weighted"] > 0.02 for r in sub),
                          "nsigew": sum(r["energy_weighted_p_value"] < 0.05 for r in sub),
+                         "nsigcl": sum(r["classical_p_value"] < 0.05 for r in sub),
                          "nhump": sum(r["noise_gain"] > 0.01 for r in sub),
                          "nseed": sum(r["beyond_distance_best"] > r["control_best_seed"] for r in sub),
                          "mean": f3(float(np.mean([r["beyond_distance_best"] for r in sub]))),
@@ -220,6 +221,9 @@ def write_numbers(rows):
                                           for r in sub),
                          "tseedn": sum(load(r["pdb"], "result")["transport"]["control"]["n_seeds"] for r in sub)}.items():
             put("agg", name, key, val)
+    first = [r for r in rows if r["pdb"] in VALIDATION[:6]]              # the first validation stage
+    put("agg", "val6", "nsig", sum(r["p_value"] < 0.05 for r in first))
+    put("agg", "val6", "binp", fp(float(binom.sf(sum(r["p_value"] < 0.05 for r in first) - 1, len(first), 0.05))))
     for r in rows:
         put("res", r["pdb"], "cilo", f3(r["ci_low"]))
         put("res", r["pdb"], "cihi", f3(r["ci_high"]))
@@ -264,6 +268,23 @@ def write_numbers(rows):
             for m in EXTERNAL:
                 put("agg", name, "nsig" + m, sum(float(r[f"{m}_p"]) < 0.05 for r in sub))
                 put("agg", name, "mean" + m, f3(float(np.mean([float(r[f"{m}_beyond"]) for r in sub]))))
+    # one setting at a time for the significant proteins (sensitivity_more.py), when it has been run
+    more = os.path.join(HERE, "sensitivity_more.csv")
+    if os.path.isfile(more):
+        with open(more) as f:
+            mrows = list(csv.DictReader(f))
+        sig = lambda r: float(r["p_value"]) < 0.05
+        beats_ew = lambda r: float(r["beyond_distance_best"]) > float(r["energy_weighted_best"]) + 0.02
+        put("agg", "more", "n", len(mrows))
+        put("agg", "more", "nprot", len({r["pdb"] for r in mrows}))
+        put("agg", "more", "nsig", sum(sig(r) for r in mrows))
+        put("agg", "more", "nbeatew", sum(beats_ew(r) for r in mrows))
+        for pid in sorted({r["pdb"] for r in mrows}):
+            sub = [r for r in mrows if r["pdb"] == pid]
+            put("more", pid, "nsig", f"{sum(sig(r) for r in sub)} of {len(sub)}")
+        for what in ("T", "cutoff", "scale"):
+            sub = [r for r in mrows if r["setting"] == what]
+            put("agg", "more", "nsig" + what, f"{sum(sig(r) for r in sub)} of {len(sub)}")
     with open(os.path.join(HERE, "numbers.tex"), "w") as f:
         f.write("\n".join(lines) + "\n")
 

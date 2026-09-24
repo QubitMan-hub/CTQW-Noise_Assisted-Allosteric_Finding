@@ -140,16 +140,19 @@ Outputs land in `output/`:
 ## Results so far
 
 `results/` holds the tables and figures for every protein studied so far: four
-used during development and ten drawn from the ALLO table by a rule fixed before
-any of them was run (`results/select_proteins.py`), positives and nulls alike,
-with the per-run data and the one script that rebuilds them
-(`python results/make_results.py`). In short:
+used during development and fifteen held out, drawn from the ALLO table in an
+order fixed in advance (the last five pre-registered as final before they were
+run; see `results/PREREGISTRATION.md`), positives and nulls alike, with the
+per-run data and the scripts that rebuild them. In short:
 
-- Beyond distance, the walk from the active site points to the allosteric site
-  significantly in 5 of 14 proteins, and in 3 of the 10 prespecified ones.
-- Where it succeeds, the energy-weighted classical walk does as well, so
-  interference is not what finds the site; in two of the prespecified positives
-  a plain classical walk and random site energies do as well too.
+- Beyond distance, the walk from the active site points to the allosteric site in
+  4 of 12 distinct held-out proteins, more than chance, but in only 1 of the 5
+  pre-registered ones.
+- Quantum interference adds nothing detectable: where the walk succeeds, the
+  classical walk with the same energy-dependent hopping does as well, and in
+  several positives a plain classical walk and random energies do too.
+- Established predictors under the same test do about as well: closeness
+  centrality is significant in more held-out proteins than the quantum walk.
 - Noise-assisted transport appears in every protein and in every random-energy
   control, so on its own it says nothing about a given protein.
 
