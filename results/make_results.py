@@ -288,7 +288,7 @@ def write_numbers(rows):
                          "qclosep": fp(float(wilcoxon(auc["quantum"], auc["closeness"]).pvalue)),
                          "qewp": fp(float(wilcoxon(auc["quantum"], auc["ew"]).pvalue)),
                          "qplainp": fp(float(wilcoxon(auc["quantum"], auc["plain"]).pvalue)),
-                         "npairs": len(pairs), "minholm": fp(holm[0]),
+                         "npairs": len(pairs), "minholm": f4(holm[0]),
                          "minholmpair": f"{pairs[0][1]}/{pairs[0][2]}",
                          "nholm": sum(h < 0.05 for h in holm)}.items():
             put("cmp", "held", key, val)
