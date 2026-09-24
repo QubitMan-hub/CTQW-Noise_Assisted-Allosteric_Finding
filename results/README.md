@@ -18,8 +18,9 @@ Every protein studied so far is listed, including the ones where nothing is foun
 |---|---|
 | `proteins.csv` / `.md` | one row per protein: best distance-adjusted AUC, the γ where it peaks, the noise gain, p, the classical walk, the best random-energy seed |
 | `sensitivity_1T49.*`, `sensitivity_1IWH.*` | the same numbers over contact cutoff 7/8/9 Å × energy scale 1/3/5 (no control) |
-| `figures/beyond_distance.png` / `.svg` | distance-adjusted AUC versus noise for all four proteins (300 dpi) |
-| `runs/<PDB>/` | each run's data: curve CSVs, the full ranking, every setting (`_parameters.json`, with a code version) and every number (`_result.json`) |
+| `figures/*.png` / `.svg` | 300 dpi figures: `workflow`, `transport`, `beyond_distance`, `sensitivity` and `map_1T49` (signal and quantum minus classical) |
+| `numbers.tex` | every number above as LaTeX macros (`\res{1T49}{beyond}` ...), so a write-up can quote them without retyping |
+| `runs/<PDB>/` | each run's data: curve CSVs, the full ranking, the per-residue quantum-vs-classical comparison, every setting (`_parameters.json`, with a code version), every number (`_result.json`) and both walks at every γ (`_map.json`) |
 
 ## How to read the numbers
 
@@ -44,5 +45,9 @@ Every protein studied so far is listed, including the ones where nothing is foun
 | 3LSW | GluA3 LBD | 0.746 (0.03) | 0.038 | 0.667 | 0.754 | significant, but no noise benefit and one seed matches it |
 | 1IWH | haemoglobin α | 0.687 (0.56) | 0.176 | 0.627 | 0.628 | not significant (6 allosteric residues); depends on the cutoff |
 | 3CSM | chorismate mutase | 0.496 (0.32) | 0.803 | 0.486 | 0.652 | no signal beyond distance |
+
+Quantum minus classical (the walk compared with diffusion matched in spread, at the γ where the AUC
+beyond distance peaks): its own AUC beyond distance is 0.686 (p = 0.013) for 1T49 and 0.736 (p = 0.022)
+for 1IWH; 3LSW and 3CSM are not significant (p = 0.11).
 
 The exact numbers are in `proteins.csv` and `sensitivity_*.csv`.

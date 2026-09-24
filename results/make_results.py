@@ -167,8 +167,8 @@ def _save(fig, name):
 def fig_workflow():
     """The method in one picture: structure -> network -> walks over noise -> scores and tests."""
     plt = _plt()
-    fig, ax = plt.subplots(figsize=(11, 2.9))
-    ax.set_xlim(0, 11)
+    fig, ax = plt.subplots(figsize=(12, 2.9))
+    ax.set_xlim(0, 12.3)
     ax.set_ylim(0, 2.9)
     ax.axis("off")
     boxes = [("Structure", "PDB id or file;\nknown sites from ALLO"),
@@ -176,17 +176,17 @@ def fig_workflow():
              ("Hamiltonian", "H = A + s·diag(ε)\nε: z-scored hydropathy"),
              ("Dephased walk", "ρ from the active site\n18 rates γ, 0 to 100"),
              ("Scores", "signal per residue\n= ∫ ρ_ii dt, t ≤ 30"),
-             ("Tests", "AUC beyond distance, p;\nclassical walk; random ε")]
-    w, gap = 1.62, 0.25
+             ("Tests", "AUC beyond distance,\np; classical walk;\nrandom energies")]
+    w, gap = 1.75, 0.3
     for k, (title, body) in enumerate(boxes):
         x = 0.1 + k * (w + gap)
         ax.add_patch(plt.Rectangle((x, 0.55), w, 1.8, fc="#f4f4f4" if k % 2 else "#e9e9e9", ec="#222", lw=1.2))
         ax.text(x + w / 2, 2.0, title, ha="center", va="center", fontsize=11, weight="bold")
-        ax.text(x + w / 2, 1.25, body, ha="center", va="center", fontsize=9, color="#333", linespacing=1.4)
+        ax.text(x + w / 2, 1.2, body, ha="center", va="center", fontsize=9, color="#333", linespacing=1.4)
         if k < len(boxes) - 1:
             ax.annotate("", xy=(x + w + gap - 0.02, 1.45), xytext=(x + w + 0.02, 1.45),
                         arrowprops=dict(arrowstyle="-|>", color="#222", lw=1.3))
-    ax.text(5.5, 0.18, "Nulls on every run: 5 random-energy seeds; a classical random walk on the same contacts; "
+    ax.text(6.15, 0.18, "Nulls on every run: 5 random-energy seeds; a classical random walk on the same contacts; "
             "10,000 label shuffles within distance shells", ha="center", fontsize=9, color="#555")
     fig.tight_layout()
     _save(fig, "workflow")
@@ -263,7 +263,7 @@ def fig_sensitivity():
                 v, p = float(r["beyond_distance_best"]), float(r["p_value"])
                 margin = float(r["quantum_minus_classical"])
                 ax.text(k, i, f"{v:.3f}\np = {p:.3f}\n{'+' if margin >= 0 else '−'}{abs(margin):.3f} vs cl.",
-                        ha="center", va="center", fontsize=9, color="white" if v > 0.72 else "#111")
+                        ha="center", va="center", fontsize=9, color="white" if (v - 0.45) / 0.5 > 0.62 else "#111")
         ax.set_xticks(range(len(SCALES)), [f"{s:g}" for s in SCALES])
         ax.set_yticks(range(len(CUTOFFS)), [f"{c:g} Å" for c in CUTOFFS])
         ax.set_xlabel("site-energy scale s")
@@ -307,14 +307,14 @@ def fig_map(pid="1T49"):
             ax.scatter(*xy[less].T, facecolors="white", edgecolors=[grey(v) for v in t[less]], s=34,
                        linewidths=1.4, zorder=2)
             ax.set_title(f"(b) quantum minus classical (classical rate k = {m['rates'][j]:.3g})", fontsize=11)
-        ax.scatter(*xy[src].T, c="#111", s=34, zorder=3)
+        ax.scatter(*xy[src].T, c="#111" if mode == "signal" else "#b5b5b5", s=34, zorder=3)   # (b): not compared
         ax.scatter(*xy[src].T, facecolors="none", edgecolors="#111", s=150, linewidths=1.2, zorder=3)
         ax.scatter(*xy[allo].T, facecolors="none", edgecolors="#666", s=150, linewidths=1.2,
                    linestyles=(0, (2, 1.5)), zorder=3)
         ax.set_aspect("equal")
         ax.axis("off")
     from matplotlib.lines import Line2D
-    keys = [Line2D([], [], marker="o", ls="", mfc="none", mec="#111", ms=11, label="active site (walk starts here)"),
+    keys = [Line2D([], [], marker="o", ls="", mfc="none", mec="#111", ms=11, label="active site (walk starts; grey in (b))"),
             Line2D([], [], marker="o", ls="", mfc="none", mec="#666", ms=11, label="known allosteric residue"),
             Line2D([], [], marker="o", ls="", mfc="#333", mec="white", ms=7, label="(b) quantum puts more signal here"),
             Line2D([], [], marker="o", ls="", mfc="white", mec="#333", mew=1.4, ms=7, label="(b) classical puts more here")]

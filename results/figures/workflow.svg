@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="864pt" height="208.8pt" viewBox="0 0 864 208.8" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-09-24T03:31:19.567060</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 208.8 
+L 864 208.8 
+L 864 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 18.83223 162.161379 
+L 138.438672 162.161379 
+L 138.438672 46.638621 
+L 18.83223 46.638621 
+z
+" clip-path="url(#p4c84c48e15)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 158.942634 162.161379 
+L 278.549076 162.161379 
+L 278.549076 46.638621 
+L 158.942634 46.638621 
+z
+" clip-path="url(#p4c84c48e15)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 299.053038 162.161379 
+L 418.65948 162.161379 
+L 418.65948 46.638621 
+L 299.053038 46.638621 
+z
+" clip-path="url(#p4c84c48e15)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 439.163442 162.161379 
+L 558.769884 162.161379 
+L 558.769884 46.638621 
+L 439.163442 46.638621 
+z
+" clip-path="url(#p4c84c48e15)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 579.273846 162.161379 
+L 698.880288 162.161379 
+L 698.880288 46.638621 
+L 579.273846 46.638621 
+z
+" clip-path="url(#p4c84c48e15)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 719.38425 162.161379 
+L 838.990692 162.161379 
+L 838.990692 46.638621 
+L 719.38425 46.638621 
+z
+" clip-path="url(#p4c84c48e15)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="78.635451" y="71.958801" transform="rotate(-0 78.635451 71.958801)">Structure</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(47.999592 117.040999)">PDB id or file;</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(27.183576 130.10014)">known sites from ALLO</text>
+   </g>
+   <g id="patch_8">
+    <path d="M 141.805607 104.4 
+Q 148.691549 104.4 154.124046 104.4 
+" style="fill: none; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 149.924046 102.3 
+L 154.124046 104.4 
+L 149.924046 106.5 
+z
+" style="fill: #222222; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="218.745855" y="71.959231" transform="rotate(-0 218.745855 71.959231)">Contact network</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(178.087652 117.040999)">residues = nodes;</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(168.624996 129.986234)">Cβ within 8 Å = edges</text>
+   </g>
+   <g id="patch_9">
+    <path d="M 281.916011 104.4 
+Q 288.801953 104.4 294.23445 104.4 
+" style="fill: none; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 290.03445 102.3 
+L 294.23445 104.4 
+L 290.03445 106.5 
+z
+" style="fill: #222222; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="358.856259" y="71.959231" transform="rotate(-0 358.856259 71.959231)">Hamiltonian</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(319.692197 116.628265)">H = A + s·diag(ε)</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(307.343915 129.228265)">ε: z-scored hydropathy</text>
+   </g>
+   <g id="patch_10">
+    <path d="M 422.026415 104.4 
+Q 428.912357 104.4 434.344854 104.4 
+" style="fill: none; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 430.144854 102.3 
+L 434.344854 104.4 
+L 430.144854 106.5 
+z
+" style="fill: #222222; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="text_7">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="498.966663" y="71.959231" transform="rotate(-0 498.966663 71.959231)">Dephased walk</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(450.726663 116.628265)">ρ from the active site</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(454.541116 129.148812)">18 rates γ, 0 to 100</text>
+   </g>
+   <g id="patch_11">
+    <path d="M 562.136819 104.4 
+Q 569.022761 104.4 574.455258 104.4 
+" style="fill: none; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 570.255258 102.3 
+L 574.455258 104.4 
+L 570.255258 106.5 
+z
+" style="fill: #222222; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="639.077067" y="71.958801" transform="rotate(-0 639.077067 71.958801)">Scores</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(598.83863 116.628265)">signal per residue</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(599.461598 129.103109)">= ∫ ρ_ii dt, t ≤ 30</text>
+   </g>
+   <g id="patch_12">
+    <path d="M 702.247223 104.4 
+Q 709.133165 104.4 714.565662 104.4 
+" style="fill: none; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
+    <path d="M 710.365662 102.3 
+L 714.565662 104.4 
+L 710.365662 106.5 
+z
+" style="fill: #222222; stroke: #222222; stroke-width: 1.3; stroke-linecap: round"/>
+   </g>
+   <g id="text_11">
+    <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="779.187471" y="71.958801" transform="rotate(-0 779.187471 71.958801)">Tests</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(729.563721 110.328265)">AUC beyond distance,</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(741.241924 122.928265)">p; classical walk;</text>
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #333333" transform="translate(740.923409 135.528265)">random energies</text>
+   </g>
+   <g id="text_13">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans'; text-anchor: middle; fill: #555555" x="432.328788" y="185.907724" transform="rotate(-0 432.328788 185.907724)">Nulls on every run: 5 random-energy seeds; a classical random walk on the same contacts; 10,000 label shuffles within distance shells</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p4c84c48e15">
+   <rect x="11.997576" y="11.34" width="840.662424" height="186.12"/>
+  </clipPath>
+ </defs>
+</svg>
