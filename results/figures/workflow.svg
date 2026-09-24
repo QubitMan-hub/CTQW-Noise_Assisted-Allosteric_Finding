@@ -6,13 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-09-24T03:31:19.567060</dc:date>
     <dc:format>image/svg+xml</dc:format>
-    <dc:creator>
-     <cc:Agent>
-      <dc:title>Matplotlib v3.11.2, https://matplotlib.org/</dc:title>
-     </cc:Agent>
-    </dc:creator>
    </cc:Work>
   </rdf:RDF>
  </metadata>
@@ -35,7 +29,7 @@ L 138.438672 162.161379
 L 138.438672 46.638621 
 L 18.83223 46.638621 
 z
-" clip-path="url(#p4c84c48e15)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#pb279037b6d)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 158.942634 162.161379 
@@ -43,7 +37,7 @@ L 278.549076 162.161379
 L 278.549076 46.638621 
 L 158.942634 46.638621 
 z
-" clip-path="url(#p4c84c48e15)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#pb279037b6d)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 299.053038 162.161379 
@@ -51,7 +45,7 @@ L 418.65948 162.161379
 L 418.65948 46.638621 
 L 299.053038 46.638621 
 z
-" clip-path="url(#p4c84c48e15)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#pb279037b6d)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
     <path d="M 439.163442 162.161379 
@@ -59,7 +53,7 @@ L 558.769884 162.161379
 L 558.769884 46.638621 
 L 439.163442 46.638621 
 z
-" clip-path="url(#p4c84c48e15)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#pb279037b6d)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
     <path d="M 579.273846 162.161379 
@@ -67,7 +61,7 @@ L 698.880288 162.161379
 L 698.880288 46.638621 
 L 579.273846 46.638621 
 z
-" clip-path="url(#p4c84c48e15)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#pb279037b6d)" style="fill: #e9e9e9; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="patch_7">
     <path d="M 719.38425 162.161379 
@@ -75,7 +69,7 @@ L 838.990692 162.161379
 L 838.990692 46.638621 
 L 719.38425 46.638621 
 z
-" clip-path="url(#p4c84c48e15)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
+" clip-path="url(#pb279037b6d)" style="fill: #f4f4f4; stroke: #222222; stroke-width: 1.2; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <text style="font-weight: 700; font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: middle" x="78.635451" y="71.958801" transform="rotate(-0 78.635451 71.958801)">Structure</text>
@@ -176,7 +170,7 @@ z
   </g>
  </g>
  <defs>
-  <clipPath id="p4c84c48e15">
+  <clipPath id="pb279037b6d">
    <rect x="11.997576" y="11.34" width="840.662424" height="186.12"/>
   </clipPath>
  </defs>

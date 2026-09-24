@@ -107,6 +107,7 @@ def write_numbers(rows):
     """Every number the paper quotes, as LaTeX macros: \\res{1T49}{beyond}, \\sens{1T49}{nsig}, ...
     so the text can never drift from the runs."""
     f3, f4 = (lambda v: f"{v:.3f}"), (lambda v: f"{v:.4f}")
+    fp = lambda v: "\\ensuremath{<}0.001" if v < 0.001 else f"{v:.3f}"     # 10,000 shuffles: p is never 0
     lines = ["% written by results/make_results.py -- do not edit by hand"]
     put = lambda group, pid, key, val: lines.append(f"\\expandafter\\def\\csname {group}@{pid}@{key}\\endcsname{{{val}}}")
     for r in rows:
@@ -117,12 +118,12 @@ def write_numbers(rows):
                 "nallo": r["allosteric_residues"], "raw": f3(r["raw_auc_best"]), "prox": f3(r["proximity_auc"]),
                 "beyond": f3(r["beyond_distance_best"]), "gamma": f"{r['best_gamma']:g}",
                 "qend": f3(r["quantum_end"]), "dend": f3(r["dephased_end"]), "gain": f3(r["noise_gain"]),
-                "p": f3(r["p_value"]), "classical": f3(r["classical_best"]), "clp": f3(r["classical_p_value"]),
+                "p": fp(r["p_value"]), "classical": f3(r["classical_best"]), "clp": fp(r["classical_p_value"]),
                 "margin": f"{r['quantum_minus_classical']:+.3f}", "seedbest": f3(r["control_best_seed"]),
                 "tgamma": f"{r['transport_peak_gamma']:g}", "tgain": f"{100 * t['stats']['gain_rel']:.1f}",
                 "tseeds": f"{t['control']['seed_verdicts'].count('hump')}", "tn": f"{t['control']['n_seeds']}",
                 "dgamma": f"{r['difference_gamma']:g}", "drate": f"{r['difference_rate']:.3g}",
-                "dauc": f3(r["difference_auc"]), "dp": f3(r["difference_p"]),
+                "dauc": f3(r["difference_auc"]), "dp": fp(r["difference_p"]),
                 "dfav": f"{round(100 * r['allosteric_quantum_favoured'])}",
                 "shells": res["allosteric"]["adjusted"]["shells"], "elapsed": f"{res['elapsed_s']:.0f}",
                 "clraw": f3(res["allosteric"]["baselines"]["classical walk, best rate"])}.items():
@@ -135,7 +136,7 @@ def write_numbers(rows):
         margins = [float(x["quantum_minus_classical"]) for x in srows]
         best = [float(x["beyond_distance_best"]) for x in srows]
         for key, val in {"n": len(srows), "nsig": sum(p < 0.05 for p in ps), "nbeat": sum(mg > 0 for mg in margins),
-                         "nhump": sum(x["noise_hump"] == "yes" for x in srows), "pmin": f3(min(ps)), "pmax": f3(max(ps)),
+                         "nhump": sum(x["noise_hump"] == "yes" for x in srows), "pmin": fp(min(ps)), "pmax": fp(max(ps)),
                          "bmin": f3(min(best)), "bmax": f3(max(best)), "mmin": f"{min(margins):+.3f}",
                          "mmax": f"{max(margins):+.3f}"}.items():
             put("sens", pid, key, val)
@@ -149,6 +150,7 @@ def _plt():
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10.5, "svg.fonttype": "none",
+                         "svg.hashsalt": "qubitman",          # same ids every run, so unchanged figures stay unchanged
                          "axes.spines.top": False, "axes.spines.right": False})
     return plt
 
@@ -160,8 +162,8 @@ def _gamma_axis(ax):
 
 def _save(fig, name):
     os.makedirs(FIG, exist_ok=True)
-    fig.savefig(os.path.join(FIG, name + ".png"), dpi=300)
-    fig.savefig(os.path.join(FIG, name + ".svg"))
+    fig.savefig(os.path.join(FIG, name + ".png"), dpi=300, metadata={"Software": None})
+    fig.savefig(os.path.join(FIG, name + ".svg"), metadata={"Date": None, "Creator": None})
 
 
 def fig_workflow():
@@ -262,7 +264,7 @@ def fig_sensitivity():
                 r = cell[(c, s)]
                 v, p = float(r["beyond_distance_best"]), float(r["p_value"])
                 margin = float(r["quantum_minus_classical"])
-                ax.text(k, i, f"{v:.3f}\np = {p:.3f}\n{'+' if margin >= 0 else '−'}{abs(margin):.3f} vs cl.",
+                ax.text(k, i, f"{v:.3f}\n{'p < 0.001' if p < 0.001 else f'p = {p:.3f}'}\n{'+' if margin >= 0 else '−'}{abs(margin):.3f} vs cl.",
                         ha="center", va="center", fontsize=9, color="white" if (v - 0.45) / 0.5 > 0.62 else "#111")
         ax.set_xticks(range(len(SCALES)), [f"{s:g}" for s in SCALES])
         ax.set_yticks(range(len(CUTOFFS)), [f"{c:g} Å" for c in CUTOFFS])
