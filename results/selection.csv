@@ -5,10 +5,10 @@ draw_order,pdb,protein,chain,residues,n_allosteric,selected
 4,4BBG,Kinesin-like protein KIF11,A,336,14,yes
 5,4PFK,ATP-dependent 6-phosphofructokinase,A,319,8,yes
 6,3PYY,Tyrosine-protein kinase ABL1,A,265,12,yes
-7,3ZCW,Kinesin-like protein KIF11,A,321,19,
-8,3HFR,Glutamate racemase,A,266,5,
-9,3M3F,Glutamate receptor 3,A,259,12,
-10,3H30,Casein kinase II subunit alpha,A,333,9,
+7,3ZCW,Kinesin-like protein KIF11,A,321,19,yes
+8,3HFR,Glutamate racemase,A,266,5,yes
+9,3M3F,Glutamate receptor 3,A,259,12,yes
+10,3H30,Casein kinase II subunit alpha,A,333,9,yes
 11,2YHD,Androgen receptor,A,249,8,
 12,4HO6,Glucose-1-phosphate thymidylyltransferase,A,288,12,
 13,2YLO,Androgen receptor,A,250,10,

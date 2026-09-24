@@ -12,7 +12,8 @@ The validation set is drawn from the ALLO table by a rule fixed in advance:
   5. not one of the four development proteins.
 
 The eligible entries, sorted by PDB id, are shuffled with seed 2026 and the first
-six are the validation set. Every one of them is reported whatever it shows; if one
+six were the validation set; it was later extended to the first ten of the same
+fixed order (DRAW). Every one of them is reported whatever it shows; if one
 cannot be analysed at all, the next in the shuffled order replaces it and that is
 reported too. Writes results/selection.csv.
 
@@ -26,7 +27,7 @@ import labels as lb            # noqa: E402
 import rin_builder as rb       # noqa: E402
 
 DEVELOPMENT = {"1T49", "3LSW", "1IWH", "3CSM"}
-MIN_ALLO, SIZE, SEED, DRAW = 5, (100, 350), 2026, 6
+MIN_ALLO, SIZE, SEED, DRAW = 5, (100, 350), 2026, 10
 
 
 def chain_size(pid, chain, tmpdir):

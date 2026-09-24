@@ -20,7 +20,8 @@ import run_protein as rp      # noqa: E402
 import sensitivity            # noqa: E402
 
 DEVELOPMENT = ["1T49", "3LSW", "1IWH", "3CSM"]   # picked during development, positives and nulls
-VALIDATION = ["2RD5", "3HO6", "4B1F", "4BBG", "4PFK", "3PYY"]   # prespecified: select_proteins.py
+VALIDATION = ["2RD5", "3HO6", "4B1F", "4BBG", "4PFK", "3PYY",    # prespecified: select_proteins.py,
+              "3ZCW", "3HFR", "3M3F", "3H30"]                # in its fixed draw order
 PROTEINS = DEVELOPMENT + VALIDATION
 SENSITIVITY = ["1T49", "1IWH"]                   # cutoff x scale grid for the two with a noise hump
 CUTOFFS, SCALES = [7.0, 8.0, 9.0], [1.0, 3.0, 5.0]
@@ -38,15 +39,15 @@ def prune(folder):
             shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
 
 
-def run_all():
-    for pid in PROTEINS:
+def run_all(proteins=None, sensitivity=True):
+    for pid in proteins or PROTEINS:
         print(f"=== {pid}", flush=True)
         r = rp.analyze(pid, os.path.join(RUNS, pid), pid, log=lambda m: print("  " + m, flush=True))
         print(f"  done in {r['elapsed_s']} s", flush=True)
         with open(os.path.join(RUNS, pid, f"{pid}_map.json"), "w") as f:      # both walks at every gamma
             json.dump(rp.jsonable({k: r["map"][k] for k in MAP_KEYS}), f)
         prune(os.path.join(RUNS, pid))
-    for pid in SENSITIVITY:
+    for pid in SENSITIVITY if sensitivity else []:
         print(f"=== sensitivity {pid}", flush=True)
         out = os.path.join(RUNS, "sensitivity", pid)
         shutil.rmtree(out, ignore_errors=True)
