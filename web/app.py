@@ -49,8 +49,8 @@ def prune_runs():
 
 
 def parse_options(form):
-    source = form.get("source", "").strip().upper()
-    if source and not re.fullmatch(r"[A-Z0-9]+:-?\d+[A-Z]?", source):
+    source = form.get("source", "").strip()             # chain ids are case-sensitive: kept as typed
+    if source and not re.fullmatch(r"[A-Za-z0-9]+:-?\d+[A-Za-z]?", source):
         raise UserError("Start residue should look like A:151 (chain, colon, number).")
     chains = form.get("chains", "").strip()
     if chains and not re.fullmatch(r"[A-Za-z0-9]+(\s*,\s*[A-Za-z0-9]+)*", chains):

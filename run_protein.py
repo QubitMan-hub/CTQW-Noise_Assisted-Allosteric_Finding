@@ -85,21 +85,29 @@ def code_version():
     return out
 
 
+def gamma_axis(ax, gmax):
+    """The x axis every figure shares: log(1 + gamma/0.05), so gamma = 0 sits at the left
+    edge and the low-noise points stay readable; ticks at 0, 0.1, 1, 10, 100."""
+    from matplotlib.ticker import FixedLocator, NullLocator
+    ax.set_xscale("function", functions=(lambda g: np.log10(1 + np.asarray(g) / 0.05),
+                                         lambda u: 0.05 * (10 ** np.asarray(u) - 1)))
+    ax.set_xlim(0, gmax * 1.05)
+    ticks = [t for t in (0, 0.1, 1, 10, 100) if t <= gmax * 1.05]
+    ax.xaxis.set_major_locator(FixedLocator(ticks))
+    ax.xaxis.set_minor_locator(NullLocator())
+    ax.set_xticklabels([f"{t:g}" for t in ticks])
+
+
 def save_figure(base, gammas, main, main_label, ylabel, control=None, control_label=None,
                 baselines=(), chance=None, peak_gamma=None):
-    """Greyscale publication figure (300 dpi PNG + SVG). x is log(1 + gamma/0.05)
-    so gamma = 0 sits at the left edge and the low-noise points stay readable."""
+    """Greyscale publication figure (300 dpi PNG + SVG) on the shared gamma axis."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    from matplotlib.ticker import FixedLocator, NullLocator
 
-    fwd = lambda g: np.log10(1 + np.asarray(g) / 0.05)
-    inv = lambda u: 0.05 * (10 ** np.asarray(u) - 1)
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 13, "axes.linewidth": 0.8,
                          "svg.fonttype": "none"})
     fig, ax = plt.subplots(figsize=(7.0, 4.4))
-    ax.set_xscale("function", functions=(fwd, inv))
     g = np.asarray(gammas, dtype=float)
     lo = [float(np.nanmin(main))]
     ax.plot(g, main, color="#161616", lw=2.0, marker="o", ms=3.6, mfc="#161616", mec="white",
@@ -115,7 +123,6 @@ def save_figure(base, gammas, main, main_label, ylabel, control=None, control_la
         ax.axhline(chance, color="#bdbdbd", lw=0.8, zorder=0)
     if peak_gamma is not None:
         ax.axvline(peak_gamma, color="#8a8a8a", lw=1, ls=(0, (3, 3)), zorder=0)
-    ax.set_xlim(0, g[-1] * 1.05)
     top = max([float(np.nanmax(main))] + [float(np.nanmax(np.asarray(control[0]) + np.asarray(control[1])))
                                           if control is not None else 0] + [v for v, _ in baselines])
     bottom = 0.0 if chance is None else min(chance, min(lo), min([v for v, _ in baselines] or [1])) - 0.05
@@ -126,10 +133,7 @@ def save_figure(base, gammas, main, main_label, ylabel, control=None, control_la
         y = value if last is None else min(value, last - 0.055 * (y1 - y0))
         ax.text(g[-1], y, f" {label}", va="center", ha="left", fontsize=10, color="#3a3a3a")
         last = y
-    ticks = [t for t in (0, 0.1, 1, 10, 100) if t <= g[-1] * 1.05]
-    ax.xaxis.set_major_locator(FixedLocator(ticks))
-    ax.xaxis.set_minor_locator(NullLocator())
-    ax.set_xticklabels([f"{t:g}" for t in ticks])
+    gamma_axis(ax, g[-1])
     ax.set_xlabel("dephasing rate γ")
     ax.set_ylabel(ylabel)
     ax.grid(axis="y", color="#e5e5e5", lw=0.8)
@@ -192,7 +196,7 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
     # 1) labels first, because they decide which chains the network uses
     try:
         labels, label_note, allo_entries = lb.resolve(inp, o["labels"], o["active"], o["allosteric"],
-                                                       o["site"], (o["chains"] or "").split(",")[0] or None)
+                                                       o["site"], (o["chains"] or "").split(",")[0].strip() or None)
     except (ValueError, OSError) as e:
         raise InputError(f"labels: {e}")
     chains = {c.strip() for c in o["chains"].split(",") if c.strip()} if o["chains"] else None
@@ -210,6 +214,8 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         msg = (str(e).strip().splitlines() or [type(e).__name__])[0][:160]
         if "no amino-acid residues" in msg:
             raise InputError("no amino-acid residues found" + (f" in chain(s) {','.join(sorted(chains))}." if chains else "."))
+        if isinstance(e, ValueError):                  # the structure was read; say what is wrong with it
+            raise InputError(msg)
         if not os.path.isfile(inp):
             raise InputError(f"could not fetch PDB id {inp}; check the id and your internet connection.")
         raise InputError(f"could not read the structure file: {msg}")
@@ -217,13 +223,15 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         raise InputError(f"only {G.number_of_nodes()} residue(s) found; the walk needs a real network.")
     graphml = os.path.join(outdir, prefix + ".graphml")
     nx.write_graphml(G, graphml)
-    _, nodes, A, resnames = wc.load_network(graphml)
+    _, nodes, A, resnames = wc.network_arrays(G)
     idx = {n: i for i, n in enumerate(nodes)}
     N = len(nodes)
     degree = dict(G.degree())
     chains_used = sorted({n.split(":")[0] for n in nodes})
     log(f"[network] {N} residues, {G.number_of_edges()} contacts, chains {chains_used}")
 
+    if o["source"] and o["source"] not in idx and o["source"].upper() in idx:
+        o["source"] = o["source"].upper()                  # chain ids are case-sensitive; accept a:151 for A:151
     if o["source"] and o["source"] not in idx:
         raise InputError(f"start residue {o['source']} is not in the network; ids look like {', '.join(nodes[:3])}.")
 
@@ -305,6 +313,12 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
     a_res = None
     if allo:
         el, pos = allo["eligible"], allo["positive"]
+        reach = el & (hops >= 0)                     # candidates connected to the active site
+        if not (pos & reach).any() or not (~pos & reach).any():
+            notes.append("allosteric test skipped: no known allosteric residue is connected to the active site "
+                         "in this network (try other chains or a larger cutoff)")
+            allo = None
+    if allo:
         auc = np.array([wc.roc_auc(s[el], pos[el]) for s in S])
         a_stats = wc.hump_stats(gammas, auc)
         dist = hops                                  # the walk starts at the active site here
@@ -312,7 +326,6 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         deg = np.array([degree[n] for n in nodes], dtype=float)
         # distance-adjusted: each residue compared only with residues equally far from the
         # active site, so the test measures what the walk adds beyond plain proximity
-        reach = el & (dist >= 0)
         shells = wc.distance_shells(dist, reach)
         adj_auc = lambda sc: wc.roc_auc(wc.shell_percentile(sc, shells, N)[reach], pos[reach])
         auc_adj = np.array([adj_auc(s) for s in S])
@@ -458,6 +471,13 @@ def _layout(G, nodes):
     if coordinates are missing), scaled to [0, 1] with the aspect ratio kept."""
     try:
         xyz = np.array([[float(G.nodes[n][k]) for k in ("x", "y", "z")] for n in nodes])
+        missing = ~xyz.any(axis=1)                  # the network stores (0, 0, 0) when a residue has no C-alpha
+        if missing.all():
+            raise ValueError("no coordinates")
+        idx = {n: i for i, n in enumerate(nodes)}
+        for i in np.where(missing)[0]:             # place it among its contacts instead of at the origin
+            near = [idx[m] for m in G.neighbors(nodes[i]) if not missing[idx[m]]]
+            xyz[i] = xyz[near].mean(axis=0) if near else xyz[~missing].mean(axis=0)
         xyz -= xyz.mean(axis=0)
         _, _, vt = np.linalg.svd(xyz, full_matrices=False)
         xy = xyz @ vt[:2].T

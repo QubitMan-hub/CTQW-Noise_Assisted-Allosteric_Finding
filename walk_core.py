@@ -43,8 +43,12 @@ DEFAULT_GAMMAS = [0.0] + [float(f"{g:.4g}") for g in np.logspace(-2, 2, 17)]
 
 
 def load_network(graphml_path):
-    """Return (G, node_ids, adjacency, residue_names) from a GraphML network."""
-    G = nx.read_graphml(graphml_path)
+    """Return (G, node_ids, adjacency, residue_names) from a GraphML network file."""
+    return network_arrays(nx.read_graphml(graphml_path))
+
+
+def network_arrays(G):
+    """(G, node_ids, symmetric adjacency without self-loops, residue_names) of a network."""
     nodes = list(G.nodes())
     A = nx.to_numpy_array(G, nodelist=nodes, weight="weight")
     A = np.maximum(A, A.T)
@@ -261,16 +265,10 @@ def roc_auc(scores, positive_mask):
     return float((ranks[pos].sum() - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg))
 
 
-def distal_mask(G, nodes, source_ids, fraction=0.5):
-    """Residues in the far part of the network from the source(s): hop distance at
-    least ceil(fraction * eccentricity). Averaging transport over this set is far
-    less arbitrary than a single 'farthest' residue. Returns (mask, min_hops)."""
-    return distal_from_hops(hop_distance(G, nodes, [source_ids] if isinstance(source_ids, str) else source_ids),
-                            fraction)
-
-
 def distal_from_hops(dist, fraction=0.5):
-    """distal_mask from hop distances already computed."""
+    """Residues in the far part of the network from the start: hop distance at least
+    ceil(fraction * eccentricity). Averaging transport over this set is far less
+    arbitrary than a single 'farthest' residue. Returns (mask, min_hops)."""
     min_hops = max(1, int(np.ceil(fraction * max(dist.max(), 0))))
     return dist >= min_hops, min_hops
 

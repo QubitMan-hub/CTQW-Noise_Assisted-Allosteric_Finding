@@ -154,13 +154,7 @@ def _plt():
 
 
 def _gamma_axis(ax):
-    """The pipeline's x axis: log(1 + gamma/0.05), so gamma = 0 sits at the left edge."""
-    ax.set_xscale("function", functions=(lambda g: np.log10(1 + np.asarray(g) / 0.05),
-                                         lambda u: 0.05 * (10 ** np.asarray(u) - 1)))
-    ax.set_xlim(0, 105)
-    ax.set_xticks([0, 0.1, 1, 10, 100])
-    ax.set_xticklabels(["0", "0.1", "1", "10", "100"])
-    ax.minorticks_off()
+    rp.gamma_axis(ax, 100.0)                  # the same axis as the pipeline's own figures
     ax.grid(axis="y", color="#eee")
 
 

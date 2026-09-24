@@ -623,6 +623,7 @@ function drawMap() {
     v = mapView(r); diff = mapMode === "diff" && !!v.diff;
     looks = mp.nodes.map(look);
     nodeEls.forEach((c, i) => { c.setAttribute("fill", looks[i].fill); c.setAttribute("stroke", looks[i].stroke); c.setAttribute("stroke-width", looks[i].w); });
+    mp.nodes.map((_, i) => i).sort((a, b) => key(a) - key(b)).forEach((i) => ng.appendChild(nodeEls[i]));   // strongest on top
     root.setAttribute("aria-label", diff ? `Contact network of ${N} residues: quantum minus classical signal` : `Contact network of ${N} residues shaded by signal received`);
   };
   const rg = svg("g", {}, root);
