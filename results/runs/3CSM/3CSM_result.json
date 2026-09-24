@@ -1,6 +1,6 @@
 {
   "name": "3CSM",
-  "elapsed_s": 315.9,
+  "elapsed_s": 317.8,
   "notes": [
     "network restricted to chain(s) A, the chains the labels are numbered against (pass --chains to override)"
   ],
@@ -188,7 +188,8 @@
     "baselines": {
       "contact degree": 0.5016666666666667,
       "proximity to active site": 0.3397222222222222,
-      "classical walk, best rate": 0.32166666666666666
+      "classical walk, best rate": 0.32166666666666666,
+      "energy-weighted classical walk, best \u03b3": 0.31666666666666665
     },
     "control": {
       "mean": [
@@ -297,7 +298,8 @@
       },
       "baselines": {
         "contact degree, same distance": 0.5430555555555555,
-        "classical walk, best rate": 0.4855555555555556
+        "classical walk, best rate": 0.4855555555555556,
+        "energy-weighted classical walk, best \u03b3": 0.4627777777777778
       },
       "control": {
         "mean": [
@@ -455,6 +457,56 @@
         "p_value": 0.7312268773122688,
         "null_mean": 0.5453954339027405,
         "null_95": 0.7027778029441833,
+        "n_perm": 10000
+      }
+    },
+    "incoherent": {
+      "auc": [
+        null,
+        0.27944444444444444,
+        0.2677777777777778,
+        0.255,
+        0.24666666666666667,
+        0.25,
+        0.26611111111111113,
+        0.2922222222222222,
+        0.3088888888888889,
+        0.31666666666666665,
+        0.31277777777777777,
+        0.31277777777777777,
+        0.30777777777777776,
+        0.29777777777777775,
+        0.28888888888888886,
+        0.29,
+        0.2916666666666667,
+        0.2927777777777778
+      ],
+      "auc_adjusted": [
+        null,
+        0.35833333333333334,
+        0.33611111111111114,
+        0.31277777777777777,
+        0.2816666666666667,
+        0.2738888888888889,
+        0.29888888888888887,
+        0.3638888888888889,
+        0.4172222222222222,
+        0.4627777777777778,
+        0.46,
+        0.46166666666666667,
+        0.45,
+        0.40555555555555556,
+        0.365,
+        0.3461111111111111,
+        0.335,
+        0.32944444444444443
+      ],
+      "best_gamma_adjusted": 1.0,
+      "significance_adjusted": {
+        "observed_best": 0.4627777636051178,
+        "p_value": 0.9232076792320768,
+        "null_mean": 0.5845638513565063,
+        "null_95": 0.730555534362793,
         "n_perm": 10000
       }
     },
@@ -2408,7 +2460,8 @@
     "allosteric_svg": "3CSM_allosteric.svg",
     "adjusted_csv": "3CSM_adjusted.csv",
     "adjusted_png": "3CSM_adjusted.png",
-    "adjusted_svg": "3CSM_adjusted.svg"
+    "adjusted_svg": "3CSM_adjusted.svg",
+    "energy_weighted_csv": "3CSM_energy_weighted.csv"
   },
   "parameters": {
     "source": null,
@@ -2466,10 +2519,10 @@
       "citation": "Wu N, Stromich L, Yaliraki SN. Prediction of allosteric sites and signaling: insights from benchmarking datasets. Patterns 3(1), 100408 (2022), doi:10.1016/j.patter.2021.100408, Table S2."
     },
     "code_version": {
-      "pipeline_sha256": "dafbcad34443c4e3",
-      "git_commit": "650903256be4c73092e18b590e586fe0b2582ea4",
+      "pipeline_sha256": "401cc4f784c961de",
+      "git_commit": "7cfb72266aaa277598f69c74a27396792ebaa9ec",
       "git_dirty": false
     },
-    "created_utc": "2026-09-24T03:13:30Z"
+    "created_utc": "2026-09-24T04:37:21Z"
   }
 }
