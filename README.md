@@ -160,3 +160,9 @@ datasets", *Patterns* 3(1), 100408 (2022), doi:10.1016/j.patter.2021.100408
     rin_builder.py   structure -> residue network
     web/             the local web app
     tests/           python tests/test_walk_core.py, python tests/test_labels.py
+
+## Licence and citation
+
+© 2026 Qubit Man. Released under the MIT licence (see `LICENSE`). If you use
+this code, please cite it (see `CITATION.cff`, or GitHub's "Cite this repository"
+button). The bundled ALLO labels are CC BY 4.0 and must be cited as above.

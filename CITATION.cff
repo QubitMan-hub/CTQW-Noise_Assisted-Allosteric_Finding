@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "QubitMan: environment-assisted quantum walks for allosteric site finding"
+abstract: >-
+  A dephased continuous-time quantum walk on residue contact networks, with a
+  distance-adjusted allosteric test, a classical random-walk baseline, a
+  random-energy null model and permutation p-values; plus a local web app.
+authors:
+  - name: "Qubit Man"
+repository-code: "https://github.com/QubitMan-hub/CTQW-Noise_Assisted-Allosteric_Finding"
+license: MIT
+keywords:
+  - quantum walk
+  - dephasing
+  - allostery
+  - residue interaction network
+references:
+  - type: article
+    title: "Prediction of allosteric sites and signaling: insights from benchmarking datasets"
+    authors:
+      - family-names: Wu
+        given-names: Nan
+      - family-names: Strömich
+        given-names: Léonie
+      - family-names: Yaliraki
+        given-names: Sophia N.
+    journal: Patterns
+    volume: 3
+    issue: 1
+    start: 100408
+    year: 2022
+    doi: 10.1016/j.patter.2021.100408
