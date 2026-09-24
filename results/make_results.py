@@ -22,13 +22,19 @@ import sensitivity            # noqa: E402
 DEVELOPMENT = ["1T49", "3LSW", "1IWH", "3CSM"]   # picked during development, positives and nulls
 VALIDATION = ["2RD5", "3HO6", "4B1F", "4BBG", "4PFK", "3PYY",    # prespecified: select_proteins.py,
               "3ZCW", "3HFR", "3M3F", "3H30"]                # in its fixed draw order
-PROTEINS = DEVELOPMENT + VALIDATION
+REPLICATION = ["2YHD", "4HO6", "2VD3", "3PXF", "1ZDS"]            # pre-registered: PREREGISTRATION.md
+PROTEINS = DEVELOPMENT + VALIDATION + REPLICATION
+HELDOUT = VALIDATION + REPLICATION
+SAME_PROTEIN = {"3ZCW": "4BBG", "3HFR": "4B1F", "3M3F": "3LSW"}   # other structures of one protein
+SET_OF = {**{p: "development" for p in DEVELOPMENT}, **{p: "validation" for p in VALIDATION},
+          **{p: "replication" for p in REPLICATION}}
 SENSITIVITY = ["1T49", "1IWH"]                   # cutoff x scale grid for the two with a noise hump
 CUTOFFS, SCALES = [7.0, 8.0, 9.0], [1.0, 3.0, 5.0]
 RUNS = os.path.join(HERE, "runs")
 KEEP = ("*.csv", "*_parameters.json", "*_result.json", "*_map.json")
 MAP_KEYS = ("nodes", "edges", "gammas", "index", "rates", "signal", "classical", "aspect", "from")
 FIG = os.path.join(HERE, "figures")
+EXTERNAL = ("closeness", "betweenness", "prs")      # established predictors, see external_baselines.py
 
 
 def prune(folder):
@@ -68,6 +74,38 @@ def difference_test(pid):
             "difference_p": d["p_value"], "allosteric_quantum_favoured": d["allosteric_quantum_favoured"]}
 
 
+def bootstrap_ci(pid, n_boot=2000, seed=0):
+    """95% interval for the best AUC beyond distance, at the gamma where it peaks, from the
+    stored run: residues are resampled with replacement within each distance shell (so the
+    shells keep their sizes) and the within-shell score is recomputed each time. The gamma
+    is held at the selected value, so the interval does not include the choice of gamma."""
+    from scipy.stats import rankdata
+    wc = rp.wc
+    r, m = load(pid, "result"), load(pid, "map")
+    ids = [v["id"] for v in m["nodes"]]
+    with open(os.path.join(RUNS, pid, f"{pid}_quantum_vs_classical.csv")) as f:
+        rows = {row["residue"]: row for row in csv.DictReader(f)}
+    hops = np.array([int(rows[i]["hops_from_start"]) if i in rows else 0 for i in ids])
+    reach = np.array([i in rows for i in ids]) & (hops >= 0)
+    pos = np.array([i in rows and rows[i]["known_allosteric"] == "yes" for i in ids])
+    shells = wc.distance_shells(hops, reach)
+    score = np.array(m["signal"][r["allosteric"]["adjusted"]["stats"]["peak_index"]])
+    point = wc.roc_auc(wc.shell_percentile(score, shells, len(ids))[reach], pos[reach])
+    rng = np.random.default_rng(seed)
+    boots = []
+    for _ in range(n_boot):
+        q, lab = [], []
+        for g in shells:
+            pick = rng.choice(g, len(g))
+            q.append((rankdata(score[pick]) - 0.5) / len(g))
+            lab.append(pos[pick])
+        q, lab = np.concatenate(q), np.concatenate(lab)
+        if lab.any() and not lab.all():
+            boots.append(wc.roc_auc(q, lab))
+    lo, hi = np.percentile(boots, [2.5, 97.5])
+    return point, float(lo), float(hi)
+
+
 def protein_table():
     rows = []
     for pid in PROTEINS:
@@ -78,7 +116,7 @@ def protein_table():
         cl = d["baselines"]["classical walk, best rate"]
         ew = a["incoherent"]
         rows.append({
-            "pdb": pid, "set": "development" if pid in DEVELOPMENT else "validation", "protein": r["parameters"]["labels_used"]["protein"], "residues": r["summary"]["residues"],
+            "pdb": pid, "set": SET_OF[pid], "protein": r["parameters"]["labels_used"]["protein"], "residues": r["summary"]["residues"],
             "active_residues": a["n_active"], "allosteric_residues": a["n_allosteric"],
             "raw_auc_best": a["stats"]["peak_value"], "proximity_auc": a["baselines"]["proximity to active site"],
             "beyond_distance_best": st["peak_value"], "best_gamma": st["peak_gamma"],
@@ -96,6 +134,10 @@ def protein_table():
             "transport_peak_gamma": r["transport"]["stats"]["peak_gamma"],
             **difference_test(pid),
         })
+        point, lo, hi = bootstrap_ci(pid)
+        if abs(point - st["peak_value"]) > 1e-6:           # the stored data must reproduce the stored score
+            sys.exit(f"{pid}: bootstrap data give {point:.6f}, stored {st['peak_value']:.6f}")
+        rows[-1].update(ci_low=lo, ci_high=hi)
     return rows
 
 
@@ -157,7 +199,8 @@ def write_numbers(rows):
             put("sens", pid, key, val)
     # the prespecified validation set as a whole: how many significant, and how often that happens by chance
     from scipy.stats import binom
-    for name, members in (("dev", DEVELOPMENT), ("val", VALIDATION), ("all", PROTEINS)):
+    for name, members in (("dev", DEVELOPMENT), ("val", VALIDATION), ("rep", REPLICATION), ("held", HELDOUT),
+                          ("all", PROTEINS)):
         sub = [r for r in rows if r["pdb"] in members]
         nsig = sum(r["p_value"] < 0.05 for r in sub)
         for key, val in {"n": len(sub), "nsig": nsig, "binp": fp(float(binom.sf(nsig - 1, len(sub), 0.05))),
@@ -175,6 +218,50 @@ def write_numbers(rows):
                                           for r in sub),
                          "tseedn": sum(load(r["pdb"], "result")["transport"]["control"]["n_seeds"] for r in sub)}.items():
             put("agg", name, key, val)
+    for r in rows:
+        put("res", r["pdb"], "cilo", f3(r["ci_low"]))
+        put("res", r["pdb"], "cihi", f3(r["ci_high"]))
+    # what survives every control: the quantum walk is significant, and the energy-weighted walk beats the
+    # plain classical walk (by > 0.02) and every random-energy seed, and is significant itself
+    survive = lambda r: (r["p_value"] < 0.05 and r["energy_weighted_p_value"] < 0.05
+                         and r["energy_weighted_best"] > r["classical_best"] + 0.02
+                         and r["energy_weighted_best"] > r["control_best_seed"])
+    # beats both classical walks and every random seed with the quantum walk itself (interference would show here)
+    quantum_only = lambda r: (r["p_value"] < 0.05 and r["quantum_minus_energy_weighted"] > 0.02
+                              and r["quantum_minus_classical"] > 0.02 and r["beyond_distance_best"] > r["control_best_seed"])
+    for name, members in (("val", VALIDATION), ("rep", REPLICATION), ("held", HELDOUT), ("all", PROTEINS)):
+        sub = [r for r in rows if r["pdb"] in members]
+        ps = sorted(r["p_value"] for r in sub)                   # Benjamini-Hochberg at 5%
+        put("agg", name, "nbh", max([k + 1 for k, p in enumerate(ps) if p <= 0.05 * (k + 1) / len(ps)], default=0))
+        put("agg", name, "nsurvive", sum(survive(r) for r in sub))
+        put("agg", name, "survivors", ", ".join(r["pdb"] for r in sub if survive(r)) or "none")
+        put("agg", name, "nquantum", sum(quantum_only(r) for r in sub))
+        # distinct proteins: several structures of one protein count once (significant if any is); among
+        # held-out sets, the structure that repeats a development protein is left out
+        groups = {}
+        for r in sub:
+            if name != "all" and SAME_PROTEIN.get(r["pdb"]) in DEVELOPMENT:
+                continue
+            key = SAME_PROTEIN.get(r["pdb"], r["pdb"])
+            groups[key] = groups.get(key, False) or r["p_value"] < 0.05
+        nd, sd = len(groups), sum(groups.values())
+        put("agg", name, "ndistinct", nd)
+        put("agg", name, "nsigdistinct", sd)
+        put("agg", name, "binpdistinct", fp(float(binom.sf(sd - 1, nd, 0.05))) if nd else "--")
+    # the established predictors of external_baselines.py, when it has been run
+    ext = os.path.join(HERE, "external.csv")
+    if os.path.isfile(ext):
+        with open(ext) as f:
+            erows = {r["pdb"]: r for r in csv.DictReader(f)}
+        for pid, r in erows.items():
+            for m in EXTERNAL:
+                put("ext", pid, m, f3(float(r[f"{m}_beyond"])))
+                put("ext", pid, m + "p", fp(float(r[f"{m}_p"])))
+        for name, members in (("val", VALIDATION), ("rep", REPLICATION), ("held", HELDOUT), ("all", PROTEINS)):
+            sub = [erows[p] for p in members if p in erows]
+            for m in EXTERNAL:
+                put("agg", name, "nsig" + m, sum(float(r[f"{m}_p"]) < 0.05 for r in sub))
+                put("agg", name, "mean" + m, f3(float(np.mean([float(r[f"{m}_beyond"]) for r in sub]))))
     with open(os.path.join(HERE, "numbers.tex"), "w") as f:
         f.write("\n".join(lines) + "\n")
 

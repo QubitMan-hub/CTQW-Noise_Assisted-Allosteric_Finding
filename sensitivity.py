@@ -21,10 +21,10 @@ COLUMNS = ["cutoff", "scale", "residues", "contacts", "beyond_distance_best", "b
            "transport_verdict", "control_best_seed", "seconds"]
 
 
-def one(inp, cutoff, scale, control, seeds, outdir, prefix):
+def one(inp, cutoff, scale, control, seeds, outdir, prefix, tmax=30.0):
     t0 = time.time()
     r = rp.analyze(inp, outdir, prefix, {"cutoff": cutoff, "scale": scale, "control": control,
-                                          "control_seeds": seeds}, log=lambda *a: None)
+                                          "control_seeds": seeds, "tmax": tmax}, log=lambda *a: None)
     a = r["allosteric"]
     row = {"cutoff": cutoff, "scale": scale, "residues": r["summary"]["residues"],
            "contacts": r["summary"]["contacts"], "transport_verdict": r["transport"]["stats"]["verdict"],
