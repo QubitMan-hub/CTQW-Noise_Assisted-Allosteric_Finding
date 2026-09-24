@@ -342,22 +342,26 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
         adj_baselines["classical walk, best rate"] = float(np.nanmax(c_adj))
         # energy-weighted classical walk: the hopping rates the dephased walk reduces to (same
         # contacts, energies and gamma, no interference); its best gamma is the stricter baseline
-        IC = wc.incoherent_scores(hams["main"], walk_src, gammas, o["tmax"])
-        live = [j for j, g in enumerate(gammas) if g > 0]
-        e_raw, e_adj = np.full(len(gammas), np.nan), np.full(len(gammas), np.nan)
-        e_raw[live] = [wc.roc_auc(IC[j][el], pos[el]) for j in live]
-        e_adj[live] = [adj_auc(IC[j]) for j in live]
-        baselines["energy-weighted classical walk, best γ"] = float(np.nanmax(e_raw))
-        adj_baselines["energy-weighted classical walk, best γ"] = float(np.nanmax(e_adj))
+        live = [j for j, g in enumerate(gammas) if g > 0]            # it does not move at gamma = 0
+        if live:
+            IC = wc.incoherent_scores(hams["main"], walk_src, gammas, o["tmax"])
+            e_raw, e_adj = np.full(len(gammas), np.nan), np.full(len(gammas), np.nan)
+            e_raw[live] = [wc.roc_auc(IC[j][el], pos[el]) for j in live]
+            e_adj[live] = [adj_auc(IC[j]) for j in live]
+            baselines["energy-weighted classical walk, best γ"] = float(np.nanmax(e_raw))
+            adj_baselines["energy-weighted classical walk, best γ"] = float(np.nanmax(e_adj))
+        else:
+            notes.append("energy-weighted classical walk skipped: it needs at least one noise level above 0")
         # significance: shuffle the allosteric labels within each distance shell
         sig = wc.shell_permutation_test(S, shells, pos & reach, n_perm=o["permutations"], seed=o["seed"])
         c_sig = wc.shell_permutation_test(C, shells, pos & reach, n_perm=o["permutations"], seed=o["seed"])
-        e_sig = wc.shell_permutation_test(IC[live], shells, pos & reach, n_perm=o["permutations"], seed=o["seed"])
+        e_sig = (wc.shell_permutation_test(IC[live], shells, pos & reach, n_perm=o["permutations"], seed=o["seed"])
+                 if live else None)
         classical = {"rates": list(CLASSICAL_RATES), "auc": c_raw.tolist(), "auc_adjusted": c_adj.tolist(),
                      "best_rate_raw": float(CLASSICAL_RATES[int(np.nanargmax(c_raw))]),
                      "best_rate_adjusted": float(CLASSICAL_RATES[int(np.nanargmax(c_adj))]),
                      "significance_adjusted": c_sig}
-        incoherent = {"auc": e_raw.tolist(), "auc_adjusted": e_adj.tolist(),
+        incoherent = None if not live else {"auc": e_raw.tolist(), "auc_adjusted": e_adj.tolist(),
                       "best_gamma_adjusted": float(gammas[int(np.nanargmax(e_adj))]),
                       "significance_adjusted": e_sig}
         a_ctrl = adj_ctrl = None
@@ -423,7 +427,7 @@ def analyze(inp, outdir, prefix, opts=None, log=print):
                     control=(ctrl["mean"], ctrl["sd"]) if ctrl else None,
                     control_label=f"random site energies ({len(control_keys)} seeds, mean ± sd)",
                     baselines=[(v, k) for k, v in bl.items()], chance=chance, peak_gamma=st["peak_gamma"])
-    if a_res:
+    if a_res and a_res["incoherent"]:
         files["energy_weighted_csv"] = prefix + "_energy_weighted.csv"
         with open(os.path.join(outdir, files["energy_weighted_csv"]), "w") as f:
             f.write("gamma,auc,auc_beyond_distance\n")
@@ -583,7 +587,7 @@ def main():
         if sg:
             print(f"  significance (labels shuffled within distance shells, best over all gammas): "
                   f"p = {sg['p_value']:.4f}; classical walk best {cs['observed_best']:.3f}, p = {cs['p_value']:.4f}")
-            es = al["incoherent"]["significance_adjusted"]
+            es = (al["incoherent"] or {}).get("significance_adjusted")
             if es:
                 print(f"  energy-weighted classical walk (no interference): best {es['observed_best']:.3f} "
                       f"at gamma {al['incoherent']['best_gamma_adjusted']:g}, p = {es['p_value']:.4f}")
