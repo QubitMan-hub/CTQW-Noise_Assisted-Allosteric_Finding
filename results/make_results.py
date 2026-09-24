@@ -230,7 +230,10 @@ def fig_workflow():
 def fig_transport():
     """Transport to the distal residues versus noise, with the random-energy band."""
     plt = _plt()
-    fig, axs = plt.subplots(2, 5, figsize=(15, 6.2), sharex=True)
+    rows = -(-len(PROTEINS) // 5)
+    fig, axs = plt.subplots(rows, 5, figsize=(15, 3.1 * rows + 0.4), sharex=True, squeeze=False)
+    for ax in axs.flat[len(PROTEINS):]:
+        ax.set_visible(False)
     for ax, pid in zip(axs.flat, PROTEINS):
         r = load(pid, "result")
         g, t = np.array(r["gammas"]), r["transport"]
@@ -242,12 +245,13 @@ def fig_transport():
                 label="hydropathy site energies")
         st = t["stats"]
         ax.set_title(f"{pid}{'*' if pid in VALIDATION else ''}: peak at γ = {st['peak_gamma']:g}", fontsize=10.5)
-    for ax in axs[1]:
+    for ax in axs.flat[len(PROTEINS) - 5:len(PROTEINS)]:
         ax.set_xlabel("dephasing rate γ")
+        ax.xaxis.set_tick_params(labelbottom=True)
     for ax in axs[:, 0]:
         ax.set_ylabel("mean signal on distal residues")
     fig.legend(*axs[0, 0].get_legend_handles_labels(), loc="upper center", ncol=2, frameon=False)
-    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    fig.tight_layout(rect=(0, 0, 1, 1 - 0.25 / rows))
     _save(fig, "transport")
     plt.close(fig)
 
@@ -255,7 +259,10 @@ def fig_transport():
 def fig_beyond_distance():
     """AUC beyond distance vs noise for every protein: quantum walk, random-energy band, classical walk."""
     plt = _plt()
-    fig, axs = plt.subplots(5, 2, figsize=(12, 18.5), sharex=True, sharey=True)
+    rows = -(-len(PROTEINS) // 2)
+    fig, axs = plt.subplots(rows, 2, figsize=(12, 3.6 * rows + 0.5), sharex=True, sharey=True, squeeze=False)
+    for ax in axs.flat[len(PROTEINS):]:
+        ax.set_visible(False)
     for ax, pid in zip(axs.flat, PROTEINS):
         r = load(pid, "result")
         g, d = np.array(r["gammas"]), r["allosteric"]["adjusted"]
@@ -276,12 +283,12 @@ def fig_beyond_distance():
         ax.set_title(f"{pid}{'*' if pid in VALIDATION else ''} ({r['summary']['residues']} residues): best {st['peak_value']:.3f} "
                      f"at γ = {st['peak_gamma']:g}, p {'< 0.001' if pv < 0.001 else f'= {pv:.3f}'}", fontsize=10.5)
         ax.set_ylim(0.2, 1.0)
-    for ax in axs[1]:
+    for ax in axs[-1]:
         ax.set_xlabel("dephasing rate γ")
     for ax in axs[:, 0]:
-        ax.set_ylabel("ROC AUC among residues equally far\nfrom the active site")
+        ax.set_ylabel("AUC beyond distance")
     fig.legend(*axs[0, 0].get_legend_handles_labels(), loc="upper center", ncol=2, frameon=False)
-    fig.tight_layout(rect=(0, 0, 1, 0.965))
+    fig.tight_layout(rect=(0, 0, 1, 1 - 0.18 / rows))
     _save(fig, "beyond_distance")
     plt.close(fig)
 
