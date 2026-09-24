@@ -26,19 +26,28 @@ is why a score is only possible where those residues are known.
 
 ## Use it
 
+Needs Python 3.10 or newer (tested on 3.11). Download the code and install the few packages it uses:
+
+    git clone https://github.com/QubitMan-hub/CTQW-Noise_Assisted-Allosteric_Finding.git
+    cd CTQW-Noise_Assisted-Allosteric_Finding
     pip install -r requirements.txt
+
+(or use GitHub's green "Code" button, then "Download ZIP", and unzip it). Then:
+
+    python web/app.py                              # the website: open http://127.0.0.1:8000
     python run_protein.py 1A8O.pdb                 # a file
     python run_protein.py 4OBE --chains A          # any PDB id
     python run_protein.py 4OBE --chains A --active A:12,A:13,A:61   # with an active site
     python run_protein.py 1IWH                     # an ALLO protein (known sites looked up)
     python run_protein.py 1IWH --no-control        # quick look, skips the null model
 
-Or in the browser: `python web/app.py`, then open http://127.0.0.1:8000.
-The site (QubitMan, with a light/dark toggle) can also roll a random protein, or one with a known allosteric
-site, and shows a short summary of any PDB entry before you run it. A Walk | Table switch at the top lists
-every protein walked on that machine (kept in `web/runs/table.jsonl`, even after
-old result files are cleared); click a row to reopen its results. It needs an
-internet connection to reach files.rcsb.org.
+The website (QubitMan, with a light/dark toggle) runs on your own computer: the
+address above only works on the machine running it. It can roll a random
+protein, or one with a known allosteric site, and shows a short summary of any
+PDB entry before you run it. A Walk | Table switch at the top lists every protein
+walked on that machine (kept in `web/runs/table.jsonl`, even after old result
+files are cleared); click a row to reopen its results. It needs an internet
+connection to reach files.rcsb.org.
 
 Outputs land in `output/`:
 
