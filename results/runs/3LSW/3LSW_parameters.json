@@ -54,9 +54,9 @@
     "citation": "Wu N, Stromich L, Yaliraki SN. Prediction of allosteric sites and signaling: insights from benchmarking datasets. Patterns 3(1), 100408 (2022), doi:10.1016/j.patter.2021.100408, Table S2."
   },
   "code_version": {
-    "pipeline_sha256": "dafbcad34443c4e3",
-    "git_commit": "650903256be4c73092e18b590e586fe0b2582ea4",
+    "pipeline_sha256": "401cc4f784c961de",
+    "git_commit": "82bf70b154ebc3006cfbd00c69b79f226facb1d2",
     "git_dirty": false
   },
-  "created_utc": "2026-09-24T03:06:23Z"
+  "created_utc": "2026-09-24T04:30:13Z"
 }
