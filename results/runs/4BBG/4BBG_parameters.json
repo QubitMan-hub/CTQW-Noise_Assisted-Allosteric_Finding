@@ -1,0 +1,62 @@
+{
+  "source": null,
+  "chains": null,
+  "model": 0,
+  "method": "cb",
+  "cutoff": 8.0,
+  "min_seq_sep": 0,
+  "weighted": false,
+  "site_energy": "hydropathy",
+  "scale": 3.0,
+  "seed": 0,
+  "gammas": [
+    0.0,
+    0.01,
+    0.01778,
+    0.03162,
+    0.05623,
+    0.1,
+    0.1778,
+    0.3162,
+    0.5623,
+    1.0,
+    1.778,
+    3.162,
+    5.623,
+    10.0,
+    17.78,
+    31.62,
+    56.23,
+    100.0
+  ],
+  "tmax": 30.0,
+  "ntime": 200,
+  "distal_fraction": 0.5,
+  "control": true,
+  "control_seeds": 5,
+  "permutations": 10000,
+  "labels": "auto",
+  "active": null,
+  "allosteric": null,
+  "site": null,
+  "input": "4BBG",
+  "chains_used": [
+    "A"
+  ],
+  "walk_from": "active site",
+  "distal_min_hops": 4,
+  "labels_used": {
+    "origin": "ALLO",
+    "entry": "4BBG",
+    "pdb": "4BBG",
+    "protein": "Kinesin-like protein KIF11",
+    "allosteric_ligand": "V02 A1370",
+    "citation": "Wu N, Stromich L, Yaliraki SN. Prediction of allosteric sites and signaling: insights from benchmarking datasets. Patterns 3(1), 100408 (2022), doi:10.1016/j.patter.2021.100408, Table S2."
+  },
+  "code_version": {
+    "pipeline_sha256": "401cc4f784c961de",
+    "git_commit": "c0c8fbd800fca658d2d664ebae94c1334c9d4bed",
+    "git_dirty": false
+  },
+  "created_utc": "2026-09-24T05:06:40Z"
+}

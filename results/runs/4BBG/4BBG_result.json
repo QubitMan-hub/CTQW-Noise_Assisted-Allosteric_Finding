@@ -1,0 +1,3165 @@
+{
+  "name": "4BBG",
+  "elapsed_s": 648.0,
+  "notes": [
+    "network restricted to chain(s) A, the chains the labels are numbered against (pass --chains to override)"
+  ],
+  "label_note": "ALLO entry 4BBG (Kinesin-like protein KIF11)",
+  "summary": {
+    "residues": 336,
+    "contacts": 1681,
+    "chains": [
+      "A"
+    ],
+    "walk_from": "active site",
+    "n_start": 23,
+    "distal_count": 84,
+    "distal_min_hops": 4,
+    "site_energy": "hydropathy",
+    "scale": 3.0
+  },
+  "gammas": [
+    0.0,
+    0.01,
+    0.01778,
+    0.03162,
+    0.05623,
+    0.1,
+    0.1778,
+    0.3162,
+    0.5623,
+    1.0,
+    1.778,
+    3.162,
+    5.623,
+    10.0,
+    17.78,
+    31.62,
+    56.23,
+    100.0
+  ],
+  "transport": {
+    "distal_mean": [
+      0.052048334653290854,
+      0.053179656483388446,
+      0.05397898049002993,
+      0.05525015369299232,
+      0.057122825397086026,
+      0.05958437502282492,
+      0.06236921607077517,
+      0.06505947957048691,
+      0.06727183098582766,
+      0.06857846829844938,
+      0.06837692190151438,
+      0.0658918076488012,
+      0.06019821503260232,
+      0.05044246169793618,
+      0.03670716413526325,
+      0.021557724793069142,
+      0.009514502738994367,
+      0.003013281643489869
+    ],
+    "stats": {
+      "peak_index": 9,
+      "peak_gamma": 1.0,
+      "peak_value": 0.06857846829844938,
+      "quantum_value": 0.052048334653290854,
+      "dephased_value": 0.003013281643489869,
+      "baseline": 0.052048334653290854,
+      "gain_abs": 0.016530133645158526,
+      "gain_rel": 0.31759197974864267,
+      "helps_range": [
+        0.01,
+        5.623
+      ],
+      "helps_decades": 2.749968083509403,
+      "verdict": "hump"
+    },
+    "control": {
+      "mean": [
+        0.05926184692495569,
+        0.059883730426153435,
+        0.06032634371702574,
+        0.06103675506442263,
+        0.062101280053423344,
+        0.06354361852937239,
+        0.06525252600899657,
+        0.06697277864444792,
+        0.0683429678931804,
+        0.06892275591128848,
+        0.06817055986963619,
+        0.06539196766423565,
+        0.059676106095775706,
+        0.050055632375509494,
+        0.03649748023337339,
+        0.02148324916158122,
+        0.009498710413047153,
+        0.0030113990158551042
+      ],
+      "sd": [
+        0.0032908201921344723,
+        0.003167278343225819,
+        0.003076903459873031,
+        0.0029273422371681366,
+        0.002692503893030402,
+        0.002354253008551135,
+        0.0019256028440779106,
+        0.0014560839618097802,
+        0.0010204132642919715,
+        0.0007097110325241337,
+        0.0005438035156929676,
+        0.0004398346712602835,
+        0.0003379317448964154,
+        0.00023436443490919715,
+        0.00013161233005132357,
+        4.979364420331223e-05,
+        1.1648029337736038e-05,
+        1.6950079842431633e-06
+      ],
+      "stats": {
+        "peak_index": 9,
+        "peak_gamma": 1.0,
+        "peak_value": 0.06892275591128848,
+        "quantum_value": 0.05926184692495569,
+        "dephased_value": 0.0030113990158551042,
+        "baseline": 0.05926184692495569,
+        "gain_abs": 0.009660908986332789,
+        "gain_rel": 0.16302072054160863,
+        "helps_range": [
+          0.01,
+          5.623
+        ],
+        "helps_decades": 2.749968083509403,
+        "verdict": "hump"
+      },
+      "control_gains": [
+        0.009175420826203082,
+        0.008541919070363765,
+        0.0051357193794656225,
+        0.012376324706300505,
+        0.013163443050222129
+      ],
+      "exceeds_seeds": 5,
+      "n_seeds": 5,
+      "z": 2.3752155397851404,
+      "seed_verdicts": [
+        "hump",
+        "hump",
+        "hump",
+        "hump",
+        "hump"
+      ]
+    }
+  },
+  "allosteric": {
+    "auc": [
+      0.6619506321493076,
+      0.6637567730282962,
+      0.6646598434677905,
+      0.6622516556291391,
+      0.6670680313064419,
+      0.6655629139072847,
+      0.6637567730282962,
+      0.6649608669476219,
+      0.6634557495484648,
+      0.6610475617098134,
+      0.6583383503913305,
+      0.648103552077062,
+      0.6541240216736905,
+      0.6688741721854304,
+      0.6902468392534618,
+      0.7101143889223359,
+      0.7212522576760987,
+      0.7347983142685129
+    ],
+    "stats": {
+      "peak_index": 17,
+      "peak_gamma": 100.0,
+      "peak_value": 0.7347983142685129,
+      "quantum_value": 0.6619506321493076,
+      "dephased_value": 0.7347983142685129,
+      "baseline": 0.7347983142685129,
+      "gain_abs": 0.0,
+      "gain_rel": 0.0,
+      "helps_range": null,
+      "helps_decades": null,
+      "verdict": "dephased"
+    },
+    "baselines": {
+      "contact degree": 0.5012040939193257,
+      "proximity to active site": 0.7382600842865743,
+      "classical walk, best rate": 0.7480433473810957,
+      "energy-weighted classical walk, best \u03b3": 0.7739313666465985
+    },
+    "control": {
+      "mean": [
+        0.624262492474413,
+        0.6282962071041541,
+        0.6298013245033113,
+        0.6323901264298615,
+        0.6372667068031306,
+        0.64262492474413,
+        0.6469596628537025,
+        0.645996387718242,
+        0.6379289584587597,
+        0.6325105358217942,
+        0.6304033714629741,
+        0.6346779048765804,
+        0.6490066225165563,
+        0.6701384708007225,
+        0.6904274533413607,
+        0.7093317278747742,
+        0.7206502107164359,
+        0.7350993377483444
+      ],
+      "sd": [
+        0.06732904094476411,
+        0.06666930049457472,
+        0.06654114318919302,
+        0.0644227944003827,
+        0.06383713743350848,
+        0.060792554421443365,
+        0.06025235921831134,
+        0.05963699835443737,
+        0.05588325580289312,
+        0.04957497555225665,
+        0.03796305912375386,
+        0.02427944246683742,
+        0.015259248079413259,
+        0.006788463247600193,
+        0.003482517727629046,
+        0.0006757960361421986,
+        0.00019038396509140176,
+        0.00019038396509140176
+      ],
+      "stats": {
+        "peak_index": 17,
+        "peak_gamma": 100.0,
+        "peak_value": 0.7350993377483444,
+        "quantum_value": 0.624262492474413,
+        "dephased_value": 0.7350993377483444,
+        "baseline": 0.7350993377483444,
+        "gain_abs": 0.0,
+        "gain_rel": 0.0,
+        "helps_range": null,
+        "helps_decades": null,
+        "verdict": "dephased"
+      },
+      "control_gains": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "exceeds_seeds": 0,
+      "n_seeds": 5,
+      "z": null
+    },
+    "adjusted": {
+      "auc": [
+        0.5234798314268513,
+        0.5165562913907285,
+        0.5174593618302228,
+        0.5114388922335942,
+        0.5189644792293799,
+        0.518362432269717,
+        0.5015051173991572,
+        0.49698976520168575,
+        0.4798314268512944,
+        0.4729078868151716,
+        0.4647802528597231,
+        0.4370860927152318,
+        0.4452137266706803,
+        0.4608669476219145,
+        0.4987959060806743,
+        0.5313064419024683,
+        0.545153521974714,
+        0.5596026490066225
+      ],
+      "stats": {
+        "peak_index": 17,
+        "peak_gamma": 100.0,
+        "peak_value": 0.5596026490066225,
+        "quantum_value": 0.5234798314268513,
+        "dephased_value": 0.5596026490066225,
+        "baseline": 0.5596026490066225,
+        "gain_abs": 0.0,
+        "gain_rel": 0.0,
+        "helps_range": null,
+        "helps_decades": null,
+        "verdict": "dephased"
+      },
+      "baselines": {
+        "contact degree, same distance": 0.34030704394942807,
+        "classical walk, best rate": 0.5701384708007224,
+        "energy-weighted classical walk, best \u03b3": 0.6619506321493076
+      },
+      "control": {
+        "mean": [
+          0.4839253461770018,
+          0.48242022877784463,
+          0.4830824804334738,
+          0.48127633955448523,
+          0.4806140878988561,
+          0.4819987959060807,
+          0.4719446116797109,
+          0.4602046959662854,
+          0.44479229379891627,
+          0.43245033112582776,
+          0.42203491872366045,
+          0.4245635159542444,
+          0.43726670680313057,
+          0.4605659241420831,
+          0.4956652618904275,
+          0.5298013245033112,
+          0.5458759783263095,
+          0.5606863335340156
+        ],
+        "sd": [
+          0.07634624887794982,
+          0.074827098824899,
+          0.07354303643890944,
+          0.07328259426024585,
+          0.07229644009340522,
+          0.07358836513077947,
+          0.0757387039528613,
+          0.07937468034108795,
+          0.08033224278568563,
+          0.0741008535236001,
+          0.05925744877475805,
+          0.04240248835127499,
+          0.028112821143079846,
+          0.016659412856796636,
+          0.009300797431813671,
+          0.001386016187022433,
+          0.0009632751354605951,
+          0.0008848247114207803
+        ],
+        "stats": {
+          "peak_index": 17,
+          "peak_gamma": 100.0,
+          "peak_value": 0.5606863335340156,
+          "quantum_value": 0.4839253461770018,
+          "dephased_value": 0.5606863335340156,
+          "baseline": 0.5606863335340156,
+          "gain_abs": 0.0,
+          "gain_rel": 0.0,
+          "helps_range": null,
+          "helps_decades": null,
+          "verdict": "dephased"
+        },
+        "control_gains": [
+          0.0,
+          0.0012040939193256328,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "exceeds_seeds": 0,
+        "n_seeds": 5,
+        "z": -0.49999999999999994,
+        "best_seeds": [
+          0.5602046959662854,
+          0.6083684527393136,
+          0.562010836845274,
+          0.561408789885611,
+          0.5596026490066225
+        ]
+      },
+      "shells": 6,
+      "significance": {
+        "observed_best": 0.559602677822113,
+        "p_value": 0.47265273472652736,
+        "null_mean": 0.5538856387138367,
+        "null_95": 0.6854304671287537,
+        "n_perm": 10000
+      },
+      "difference": {
+        "gamma": 100.0,
+        "classical_rate": 0.019957426888285296,
+        "auc": 0.49819385912101144,
+        "p_value": 0.5132486751324867,
+        "allosteric_quantum_favoured": 0.09090909090909091
+      }
+    },
+    "classical": {
+      "rates": [
+        0.01,
+        0.01778,
+        0.03162,
+        0.05623,
+        0.1,
+        0.1778,
+        0.3162,
+        0.5623,
+        1.0,
+        1.778,
+        3.162,
+        5.623,
+        10.0,
+        17.78,
+        31.62,
+        56.23,
+        100.0
+      ],
+      "auc": [
+        0.7480433473810957,
+        0.7369054786273329,
+        0.724262492474413,
+        0.7125225767609874,
+        0.6938591210114389,
+        0.6724864539434076,
+        0.648103552077062,
+        0.6285370258880193,
+        0.625526791089705,
+        0.6249247441300422,
+        0.6249247441300422,
+        0.6249247441300422,
+        0.6249247441300422,
+        0.6249247441300422,
+        0.6249247441300422,
+        0.6249247441300422,
+        0.6249247441300422
+      ],
+      "auc_adjusted": [
+        0.5701384708007224,
+        0.5623118603251054,
+        0.5484647802528597,
+        0.5319084888621313,
+        0.5042143287176399,
+        0.46568332329921736,
+        0.4370860927152318,
+        0.4108970499698977,
+        0.4090909090909091,
+        0.4090909090909091,
+        0.4090909090909091,
+        0.4090909090909091,
+        0.4090909090909091,
+        0.4090909090909091,
+        0.4090909090909091,
+        0.4090909090909091,
+        0.4090909090909091
+      ],
+      "best_rate_raw": 0.01,
+      "best_rate_adjusted": 0.01,
+      "significance_adjusted": {
+        "observed_best": 0.5701384544372559,
+        "p_value": 0.33126687331266874,
+        "null_mean": 0.5321251153945923,
+        "null_95": 0.6703792810440063,
+        "n_perm": 10000
+      }
+    },
+    "incoherent": {
+      "auc": [
+        null,
+        0.75105358217941,
+        0.7636965683323299,
+        0.7597832630945214,
+        0.7603853100541842,
+        0.7718242022877785,
+        0.7739313666465985,
+        0.7627934978928357,
+        0.7363034316676701,
+        0.7010836845273931,
+        0.6806140878988561,
+        0.6658639373871162,
+        0.6649608669476219,
+        0.6751956652618905,
+        0.6923540036122817,
+        0.7098133654425045,
+        0.7209512341962673,
+        0.7347983142685129
+      ],
+      "auc_adjusted": [
+        null,
+        0.5930162552679109,
+        0.6119807344972907,
+        0.6101745936183022,
+        0.6183022275737508,
+        0.6529199277543648,
+        0.6619506321493076,
+        0.6327513546056592,
+        0.6023479831426851,
+        0.5388320288982541,
+        0.49397953040337145,
+        0.45695364238410596,
+        0.45243829018663456,
+        0.4708007224563516,
+        0.4996989765201686,
+        0.528898254063817,
+        0.5463576158940397,
+        0.5596026490066225
+      ],
+      "best_gamma_adjusted": 0.1778,
+      "significance_adjusted": {
+        "observed_best": 0.6619506478309631,
+        "p_value": 0.097990200979902,
+        "null_mean": 0.5605852603912354,
+        "null_95": 0.6899458169937134,
+        "n_perm": 10000
+      }
+    },
+    "n_active": 23,
+    "n_allosteric": 11,
+    "n_candidates": 313,
+    "active": [
+      "A:24",
+      "A:25",
+      "A:26",
+      "A:27",
+      "A:74",
+      "A:76",
+      "A:78",
+      "A:105",
+      "A:106",
+      "A:107",
+      "A:108",
+      "A:109",
+      "A:110",
+      "A:111",
+      "A:112",
+      "A:113",
+      "A:114",
+      "A:118",
+      "A:132",
+      "A:232",
+      "A:233",
+      "A:265",
+      "A:335"
+    ],
+    "allosteric": [
+      "A:116",
+      "A:117",
+      "A:119",
+      "A:130",
+      "A:133",
+      "A:137",
+      "A:211",
+      "A:214",
+      "A:215",
+      "A:218",
+      "A:221"
+    ],
+    "missing": {
+      "active": [],
+      "allosteric": []
+    },
+    "name_mismatch": []
+  },
+  "allo_entries": [
+    "4BBG"
+  ],
+  "quantum_vs_classical": {
+    "gamma": 100.0,
+    "classical_rate": 0.019957426888285296,
+    "distal_quantum": 0.003013281643489869,
+    "distal_classical": 0.003013281643489924,
+    "classical_rates": [
+      0.18024098702236988,
+      0.1880580762274094,
+      0.19386236590142003,
+      0.2036156124002069,
+      0.21928907207422188,
+      0.2426779874154106,
+      0.273904666392411,
+      0.3103554826383954,
+      0.3464848378850258,
+      0.3711768762933977,
+      0.3671809676905883,
+      0.323202735928322,
+      0.2490828178353435,
+      0.16987575921302958,
+      0.10549498676823225,
+      0.06185467171483903,
+      0.0353137777854525,
+      0.019957426888285296
+    ]
+  },
+  "ranking": [
+    {
+      "rank": 1,
+      "id": "A:117",
+      "resname": "GLY",
+      "score": 0.3319811321242415,
+      "degree": 12,
+      "known_allosteric": true
+    },
+    {
+      "rank": 2,
+      "id": "A:75",
+      "resname": "SER",
+      "score": 0.3198918850018726,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 3,
+      "id": "A:103",
+      "resname": "ALA",
+      "score": 0.31495417367556233,
+      "degree": 16,
+      "known_allosteric": false
+    },
+    {
+      "rank": 4,
+      "id": "A:337",
+      "resname": "SER",
+      "score": 0.3087772700806476,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 5,
+      "id": "A:336",
+      "resname": "ILE",
+      "score": 0.30645835089235274,
+      "degree": 17,
+      "known_allosteric": false
+    },
+    {
+      "rank": 6,
+      "id": "A:116",
+      "resname": "GLU",
+      "score": 0.2993528306159741,
+      "degree": 10,
+      "known_allosteric": true
+    },
+    {
+      "rank": 7,
+      "id": "A:268",
+      "resname": "GLY",
+      "score": 0.2874799528769991,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 8,
+      "id": "A:115",
+      "resname": "MET",
+      "score": 0.2664205878403061,
+      "degree": 18,
+      "known_allosteric": false
+    },
+    {
+      "rank": 9,
+      "id": "A:73",
+      "resname": "GLY",
+      "score": 0.26210280493941507,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 10,
+      "id": "A:338",
+      "resname": "PRO",
+      "score": 0.26181877715486884,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 11,
+      "id": "A:134",
+      "resname": "GLY",
+      "score": 0.2599494286492555,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 12,
+      "id": "A:270",
+      "resname": "GLU",
+      "score": 0.2561168959585348,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 13,
+      "id": "A:333",
+      "resname": "ILE",
+      "score": 0.23756229574106574,
+      "degree": 16,
+      "known_allosteric": false
+    },
+    {
+      "rank": 14,
+      "id": "A:104",
+      "resname": "TYR",
+      "score": 0.23360019474210486,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 15,
+      "id": "A:349",
+      "resname": "THR",
+      "score": 0.23058124658142698,
+      "degree": 16,
+      "known_allosteric": false
+    },
+    {
+      "rank": 16,
+      "id": "A:133",
+      "resname": "ALA",
+      "score": 0.2249554910047713,
+      "degree": 10,
+      "known_allosteric": true
+    },
+    {
+      "rank": 17,
+      "id": "A:77",
+      "resname": "LYS",
+      "score": 0.21818800751076517,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 18,
+      "id": "A:81",
+      "resname": "VAL",
+      "score": 0.21638125525207685,
+      "degree": 16,
+      "known_allosteric": false
+    },
+    {
+      "rank": 19,
+      "id": "A:334",
+      "resname": "ALA",
+      "score": 0.20880937988673212,
+      "degree": 16,
+      "known_allosteric": false
+    },
+    {
+      "rank": 20,
+      "id": "A:266",
+      "resname": "LEU",
+      "score": 0.20214014059636437,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 21,
+      "id": "A:269",
+      "resname": "SER",
+      "score": 0.2001288103606471,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 22,
+      "id": "A:72",
+      "resname": "PHE",
+      "score": 0.20012389943146144,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 23,
+      "id": "A:345",
+      "resname": "GLU",
+      "score": 0.19113957014185318,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 24,
+      "id": "A:29",
+      "resname": "ASN",
+      "score": 0.1876125286859732,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 25,
+      "id": "A:119",
+      "resname": "ARG",
+      "score": 0.18706404583653258,
+      "degree": 6,
+      "known_allosteric": true
+    },
+    {
+      "rank": 26,
+      "id": "A:28",
+      "resname": "PHE",
+      "score": 0.18406737474443824,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 27,
+      "id": "A:80",
+      "resname": "ASP",
+      "score": 0.1829426949253626,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 28,
+      "id": "A:23",
+      "resname": "VAL",
+      "score": 0.18191090005673244,
+      "degree": 17,
+      "known_allosteric": false
+    },
+    {
+      "rank": 29,
+      "id": "A:230",
+      "resname": "ALA",
+      "score": 0.1800920377407147,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 30,
+      "id": "A:41",
+      "resname": "VAL",
+      "score": 0.1762448020226965,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 31,
+      "id": "A:131",
+      "resname": "PRO",
+      "score": 0.1748441206310546,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 32,
+      "id": "A:120",
+      "resname": "SER",
+      "score": 0.1733900178341925,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 33,
+      "id": "A:135",
+      "resname": "ILE",
+      "score": 0.17198649137671496,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 34,
+      "id": "A:43",
+      "resname": "CYS",
+      "score": 0.15796094731448973,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 35,
+      "id": "A:346",
+      "resname": "THR",
+      "score": 0.15462600479044203,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 36,
+      "id": "A:342",
+      "resname": "ASN",
+      "score": 0.15165960296999734,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 37,
+      "id": "A:130",
+      "resname": "ASP",
+      "score": 0.1499293535986616,
+      "degree": 13,
+      "known_allosteric": true
+    },
+    {
+      "rank": 38,
+      "id": "A:79",
+      "resname": "ILE",
+      "score": 0.14927177601755898,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 39,
+      "id": "A:235",
+      "resname": "SER",
+      "score": 0.14537917674294518,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 40,
+      "id": "A:267",
+      "resname": "ALA",
+      "score": 0.14225509649580959,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 41,
+      "id": "A:237",
+      "resname": "SER",
+      "score": 0.14110330392950188,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 42,
+      "id": "A:231",
+      "resname": "TYR",
+      "score": 0.14108339005202455,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 43,
+      "id": "A:271",
+      "resname": "ASN",
+      "score": 0.14073267188382815,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 44,
+      "id": "A:348",
+      "resname": "SER",
+      "score": 0.1397980290533848,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 45,
+      "id": "A:136",
+      "resname": "ILE",
+      "score": 0.13472317363240766,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 46,
+      "id": "A:102",
+      "resname": "PHE",
+      "score": 0.13095219702757954,
+      "degree": 16,
+      "known_allosteric": false
+    },
+    {
+      "rank": 47,
+      "id": "A:82",
+      "resname": "TYR",
+      "score": 0.12812677084374904,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 48,
+      "id": "A:264",
+      "resname": "VAL",
+      "score": 0.12798760900216805,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 49,
+      "id": "A:234",
+      "resname": "ARG",
+      "score": 0.1262626084434219,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 50,
+      "id": "A:22",
+      "resname": "VAL",
+      "score": 0.12183933611121248,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 51,
+      "id": "A:137",
+      "resname": "PRO",
+      "score": 0.12125026594817348,
+      "degree": 14,
+      "known_allosteric": true
+    },
+    {
+      "rank": 52,
+      "id": "A:138",
+      "resname": "ARG",
+      "score": 0.11974363806872539,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 53,
+      "id": "A:50",
+      "resname": "VAL",
+      "score": 0.11443541075944302,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 54,
+      "id": "A:350",
+      "resname": "LEU",
+      "score": 0.10948483334913517,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 55,
+      "id": "A:332",
+      "resname": "ILE",
+      "score": 0.10669945877901242,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 56,
+      "id": "A:339",
+      "resname": "ALA",
+      "score": 0.10215681484523492,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 57,
+      "id": "A:263",
+      "resname": "LEU",
+      "score": 0.10105362803689351,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 58,
+      "id": "A:236",
+      "resname": "HIS",
+      "score": 0.1010182569087087,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 59,
+      "id": "A:101",
+      "resname": "ILE",
+      "score": 0.0995310059482992,
+      "degree": 17,
+      "known_allosteric": false
+    },
+    {
+      "rank": 60,
+      "id": "A:71",
+      "resname": "VAL",
+      "score": 0.0985899033253172,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 61,
+      "id": "A:352",
+      "resname": "TYR",
+      "score": 0.09379134606003042,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 62,
+      "id": "A:239",
+      "resname": "PHE",
+      "score": 0.0931506652678652,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 63,
+      "id": "A:353",
+      "resname": "ALA",
+      "score": 0.09304550041819488,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 64,
+      "id": "A:84",
+      "resname": "SER",
+      "score": 0.09294409662531544,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 65,
+      "id": "A:83",
+      "resname": "ARG",
+      "score": 0.09108557189908269,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 66,
+      "id": "A:344",
+      "resname": "GLU",
+      "score": 0.08858873293510527,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 67,
+      "id": "A:85",
+      "resname": "VAL",
+      "score": 0.08794227695933433,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 68,
+      "id": "A:347",
+      "resname": "LEU",
+      "score": 0.08714169464742395,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 69,
+      "id": "A:225",
+      "resname": "ALA",
+      "score": 0.08672954240655914,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 70,
+      "id": "A:39",
+      "resname": "SER",
+      "score": 0.08547916395373531,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 71,
+      "id": "A:45",
+      "resname": "PRO",
+      "score": 0.08138611954107342,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 72,
+      "id": "A:341",
+      "resname": "LEU",
+      "score": 0.07928019688584122,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 73,
+      "id": "A:292",
+      "resname": "LEU",
+      "score": 0.07856426794512983,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 74,
+      "id": "A:70",
+      "resname": "MET",
+      "score": 0.07803838990087526,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 75,
+      "id": "A:86",
+      "resname": "VAL",
+      "score": 0.07692809445105672,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 76,
+      "id": "A:351",
+      "resname": "GLU",
+      "score": 0.07622715259002921,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 77,
+      "id": "A:229",
+      "resname": "ASN",
+      "score": 0.07569894347247681,
+      "degree": 4,
+      "known_allosteric": false
+    },
+    {
+      "rank": 78,
+      "id": "A:40",
+      "resname": "ILE",
+      "score": 0.07536848011921685,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 79,
+      "id": "A:343",
+      "resname": "LEU",
+      "score": 0.07521807366330382,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 80,
+      "id": "A:127",
+      "resname": "TRP",
+      "score": 0.07447868500129734,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 81,
+      "id": "A:68",
+      "resname": "PHE",
+      "score": 0.07176751957993818,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 82,
+      "id": "A:37",
+      "resname": "ALA",
+      "score": 0.0714966336967498,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 83,
+      "id": "A:125",
+      "resname": "TYR",
+      "score": 0.07004522430270388,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 84,
+      "id": "A:42",
+      "resname": "GLU",
+      "score": 0.06949024171069151,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 85,
+      "id": "A:21",
+      "resname": "VAL",
+      "score": 0.06926775082724379,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 86,
+      "id": "A:228",
+      "resname": "MET",
+      "score": 0.06901756824854528,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 87,
+      "id": "A:331",
+      "resname": "SER",
+      "score": 0.06556115015686123,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 88,
+      "id": "A:52",
+      "resname": "VAL",
+      "score": 0.0647906713631523,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 89,
+      "id": "A:221",
+      "resname": "ARG",
+      "score": 0.06432909087520716,
+      "degree": 11,
+      "known_allosteric": true
+    },
+    {
+      "rank": 90,
+      "id": "A:32",
+      "resname": "GLU",
+      "score": 0.06382449767962138,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 91,
+      "id": "A:139",
+      "resname": "THR",
+      "score": 0.06273932599068108,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 92,
+      "id": "A:121",
+      "resname": "PRO",
+      "score": 0.06226184209531227,
+      "degree": 4,
+      "known_allosteric": false
+    },
+    {
+      "rank": 93,
+      "id": "A:129",
+      "resname": "GLU",
+      "score": 0.0615673458985843,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 94,
+      "id": "A:51",
+      "resname": "SER",
+      "score": 0.05974673816581047,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 95,
+      "id": "A:66",
+      "resname": "TYR",
+      "score": 0.05699056677519902,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 96,
+      "id": "A:340",
+      "resname": "SER",
+      "score": 0.05666426818728508,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 97,
+      "id": "A:33",
+      "resname": "ARG",
+      "score": 0.056432908990741354,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 98,
+      "id": "A:238",
+      "resname": "VAL",
+      "score": 0.05564234573741764,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 99,
+      "id": "A:44",
+      "resname": "ASP",
+      "score": 0.05551619414233001,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 100,
+      "id": "A:164",
+      "resname": "TYR",
+      "score": 0.054948183212093285,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 101,
+      "id": "A:124",
+      "resname": "GLU",
+      "score": 0.05491936068310718,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 102,
+      "id": "A:49",
+      "resname": "GLU",
+      "score": 0.05308010017659634,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 103,
+      "id": "A:289",
+      "resname": "ASN",
+      "score": 0.051867670934046955,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 104,
+      "id": "A:20",
+      "resname": "GLN",
+      "score": 0.0493094076837429,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 105,
+      "id": "A:354",
+      "resname": "HIS",
+      "score": 0.0486991054745494,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 106,
+      "id": "A:162",
+      "resname": "GLU",
+      "score": 0.04851727245394813,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 107,
+      "id": "A:126",
+      "resname": "THR",
+      "score": 0.047352054083143774,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 108,
+      "id": "A:100",
+      "resname": "THR",
+      "score": 0.045614919857361685,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 109,
+      "id": "A:87",
+      "resname": "CYS",
+      "score": 0.04538431213743957,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 110,
+      "id": "A:30",
+      "resname": "LEU",
+      "score": 0.04518326663964155,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 111,
+      "id": "A:262",
+      "resname": "ASN",
+      "score": 0.04466802799324995,
+      "degree": 17,
+      "known_allosteric": false
+    },
+    {
+      "rank": 112,
+      "id": "A:163",
+      "resname": "ILE",
+      "score": 0.04393003371576758,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 113,
+      "id": "A:31",
+      "resname": "ALA",
+      "score": 0.0439160001597462,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 114,
+      "id": "A:53",
+      "resname": "ARG",
+      "score": 0.04390279334479497,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 115,
+      "id": "A:69",
+      "resname": "ASP",
+      "score": 0.04390162395807913,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 116,
+      "id": "A:288",
+      "resname": "ILE",
+      "score": 0.04249799930218984,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 117,
+      "id": "A:38",
+      "resname": "HIS",
+      "score": 0.042412808080911156,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 118,
+      "id": "A:48",
+      "resname": "LYS",
+      "score": 0.041459528898671674,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 119,
+      "id": "A:128",
+      "resname": "GLU",
+      "score": 0.04051774684873507,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 120,
+      "id": "A:272",
+      "resname": "ILE",
+      "score": 0.039440343226898274,
+      "degree": 4,
+      "known_allosteric": false
+    },
+    {
+      "rank": 121,
+      "id": "A:316",
+      "resname": "LEU",
+      "score": 0.03907531544776535,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 122,
+      "id": "A:227",
+      "resname": "LEU",
+      "score": 0.038169812600979694,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 123,
+      "id": "A:64",
+      "resname": "LYS",
+      "score": 0.03807977106979818,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 124,
+      "id": "A:65",
+      "resname": "THR",
+      "score": 0.03784894551255099,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 125,
+      "id": "A:330",
+      "resname": "THR",
+      "score": 0.037569643381330946,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 126,
+      "id": "A:224",
+      "resname": "ALA",
+      "score": 0.03749478381538689,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 127,
+      "id": "A:140",
+      "resname": "LEU",
+      "score": 0.0365425724806841,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 128,
+      "id": "A:291",
+      "resname": "SER",
+      "score": 0.0364136967087097,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 129,
+      "id": "A:356",
+      "resname": "ALA",
+      "score": 0.035881752419039875,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 130,
+      "id": "A:141",
+      "resname": "HIS",
+      "score": 0.03345718938996543,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 131,
+      "id": "A:35",
+      "resname": "ALA",
+      "score": 0.033199504783717616,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 132,
+      "id": "A:89",
+      "resname": "ILE",
+      "score": 0.032962092540005185,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 133,
+      "id": "A:160",
+      "resname": "LEU",
+      "score": 0.03270057054832706,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 134,
+      "id": "A:88",
+      "resname": "PRO",
+      "score": 0.032689439742440166,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 135,
+      "id": "A:295",
+      "resname": "LEU",
+      "score": 0.03256239940545913,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 136,
+      "id": "A:165",
+      "resname": "ASN",
+      "score": 0.032499504414405356,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 137,
+      "id": "A:320",
+      "resname": "LEU",
+      "score": 0.03208642700388389,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 138,
+      "id": "A:240",
+      "resname": "SER",
+      "score": 0.03134110762087898,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 139,
+      "id": "A:261",
+      "resname": "LEU",
+      "score": 0.0313000154498677,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 140,
+      "id": "A:357",
+      "resname": "LYS",
+      "score": 0.031122486163350914,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 141,
+      "id": "A:355",
+      "resname": "ARG",
+      "score": 0.030976356262154496,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 142,
+      "id": "A:54",
+      "resname": "THR",
+      "score": 0.030720523228541026,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 143,
+      "id": "A:67",
+      "resname": "THR",
+      "score": 0.030362289971709765,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 144,
+      "id": "A:19",
+      "resname": "ILE",
+      "score": 0.029014896389816556,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 145,
+      "id": "A:47",
+      "resname": "ARG",
+      "score": 0.028063729245430876,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 146,
+      "id": "A:214",
+      "resname": "LEU",
+      "score": 0.027484947172726447,
+      "degree": 10,
+      "known_allosteric": true
+    },
+    {
+      "rank": 147,
+      "id": "A:223",
+      "resname": "THR",
+      "score": 0.02733725428614779,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 148,
+      "id": "A:241",
+      "resname": "VAL",
+      "score": 0.027006132476419406,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 149,
+      "id": "A:222",
+      "resname": "THR",
+      "score": 0.026709389222339383,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 150,
+      "id": "A:142",
+      "resname": "GLN",
+      "score": 0.026644545976722386,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 151,
+      "id": "A:226",
+      "resname": "THR",
+      "score": 0.026147467485490464,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 152,
+      "id": "A:161",
+      "resname": "LEU",
+      "score": 0.026035305487034647,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 153,
+      "id": "A:34",
+      "resname": "LYS",
+      "score": 0.025846656035371,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 154,
+      "id": "A:46",
+      "resname": "VAL",
+      "score": 0.024793077882036222,
+      "degree": 4,
+      "known_allosteric": false
+    },
+    {
+      "rank": 155,
+      "id": "A:99",
+      "resname": "CYS",
+      "score": 0.024530691144316868,
+      "degree": 16,
+      "known_allosteric": false
+    },
+    {
+      "rank": 156,
+      "id": "A:36",
+      "resname": "SER",
+      "score": 0.024271957162050384,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 157,
+      "id": "A:293",
+      "resname": "LEU",
+      "score": 0.024034635072211534,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 158,
+      "id": "A:63",
+      "resname": "ARG",
+      "score": 0.02402744518815346,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 159,
+      "id": "A:210",
+      "resname": "VAL",
+      "score": 0.02313816978911823,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 160,
+      "id": "A:296",
+      "resname": "GLY",
+      "score": 0.02309866993066242,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 161,
+      "id": "A:323",
+      "resname": "SER",
+      "score": 0.022955359727572254,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 162,
+      "id": "A:290",
+      "resname": "GLN",
+      "score": 0.0228333919299548,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 163,
+      "id": "A:90",
+      "resname": "LEU",
+      "score": 0.02227933191442807,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 164,
+      "id": "A:166",
+      "resname": "GLU",
+      "score": 0.019840043725771604,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 165,
+      "id": "A:171",
+      "resname": "LEU",
+      "score": 0.01962230969906654,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 166,
+      "id": "A:123",
+      "resname": "GLU",
+      "score": 0.019441886636781754,
+      "degree": 3,
+      "known_allosteric": false
+    },
+    {
+      "rank": 167,
+      "id": "A:294",
+      "resname": "THR",
+      "score": 0.018930625273561128,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 168,
+      "id": "A:329",
+      "resname": "ARG",
+      "score": 0.018627541396956875,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 169,
+      "id": "A:122",
+      "resname": "ASN",
+      "score": 0.018274208741322743,
+      "degree": 3,
+      "known_allosteric": false
+    },
+    {
+      "rank": 170,
+      "id": "A:287",
+      "resname": "ASN",
+      "score": 0.017991755222856218,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 171,
+      "id": "A:169",
+      "resname": "PHE",
+      "score": 0.017850109804537315,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 172,
+      "id": "A:56",
+      "resname": "GLY",
+      "score": 0.01748491186434512,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 173,
+      "id": "A:158",
+      "resname": "VAL",
+      "score": 0.01721425265924756,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 174,
+      "id": "A:220",
+      "resname": "LYS",
+      "score": 0.017175872440911573,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 175,
+      "id": "A:167",
+      "resname": "GLU",
+      "score": 0.017147501783730902,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 176,
+      "id": "A:299",
+      "resname": "ILE",
+      "score": 0.016807008258733172,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 177,
+      "id": "A:219",
+      "resname": "ALA",
+      "score": 0.016495572670189296,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 178,
+      "id": "A:218",
+      "resname": "ALA",
+      "score": 0.01643676073168707,
+      "degree": 8,
+      "known_allosteric": true
+    },
+    {
+      "rank": 179,
+      "id": "A:217",
+      "resname": "GLY",
+      "score": 0.016131635022735763,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 180,
+      "id": "A:314",
+      "resname": "SER",
+      "score": 0.015905352988413803,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 181,
+      "id": "A:143",
+      "resname": "ILE",
+      "score": 0.015777286445659913,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 182,
+      "id": "A:319",
+      "resname": "ILE",
+      "score": 0.01568744715730275,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 183,
+      "id": "A:315",
+      "resname": "LYS",
+      "score": 0.01563842820326093,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 184,
+      "id": "A:159",
+      "resname": "SER",
+      "score": 0.015524511780176789,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 185,
+      "id": "A:328",
+      "resname": "THR",
+      "score": 0.014626966665519773,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 186,
+      "id": "A:98",
+      "resname": "ASN",
+      "score": 0.01377424032618925,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 187,
+      "id": "A:211",
+      "resname": "TYR",
+      "score": 0.013563253094810901,
+      "degree": 8,
+      "known_allosteric": true
+    },
+    {
+      "rank": 188,
+      "id": "A:178",
+      "resname": "VAL",
+      "score": 0.013532910506746626,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 189,
+      "id": "A:260",
+      "resname": "LYS",
+      "score": 0.013280763436955268,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 190,
+      "id": "A:317",
+      "resname": "THR",
+      "score": 0.013227982697558536,
+      "degree": 16,
+      "known_allosteric": false
+    },
+    {
+      "rank": 191,
+      "id": "A:62",
+      "resname": "SER",
+      "score": 0.013115722379449213,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 192,
+      "id": "A:91",
+      "resname": "ASP",
+      "score": 0.013066764134216785,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 193,
+      "id": "A:168",
+      "resname": "LEU",
+      "score": 0.012944359723198816,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 194,
+      "id": "A:359",
+      "resname": "ILE",
+      "score": 0.012626635207143112,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 195,
+      "id": "A:207",
+      "resname": "LYS",
+      "score": 0.012590837683604547,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 196,
+      "id": "A:18",
+      "resname": "ASN",
+      "score": 0.012023093755727063,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 197,
+      "id": "A:93",
+      "resname": "VAL",
+      "score": 0.011546369517189974,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 198,
+      "id": "A:92",
+      "resname": "GLU",
+      "score": 0.01124608329588369,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 199,
+      "id": "A:358",
+      "resname": "ASN",
+      "score": 0.011117753471236738,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 200,
+      "id": "A:179",
+      "resname": "SER",
+      "score": 0.010964758209836646,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 201,
+      "id": "A:324",
+      "resname": "LEU",
+      "score": 0.010525816407668519,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 202,
+      "id": "A:144",
+      "resname": "PHE",
+      "score": 0.010270496125650633,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 203,
+      "id": "A:297",
+      "resname": "ARG",
+      "score": 0.01015670498804487,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 204,
+      "id": "A:172",
+      "resname": "LEU",
+      "score": 0.010149321827156268,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 205,
+      "id": "A:318",
+      "resname": "ARG",
+      "score": 0.009829502502171884,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 206,
+      "id": "A:216",
+      "resname": "LYS",
+      "score": 0.009805217966901815,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 207,
+      "id": "A:361",
+      "resname": "ASN",
+      "score": 0.009790307843144634,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 208,
+      "id": "A:55",
+      "resname": "GLY",
+      "score": 0.009608442141760655,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 209,
+      "id": "A:170",
+      "resname": "ASP",
+      "score": 0.009469258842078367,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 210,
+      "id": "A:213",
+      "resname": "ILE",
+      "score": 0.00946634498922879,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 211,
+      "id": "A:215",
+      "resname": "GLU",
+      "score": 0.009412609824646624,
+      "degree": 8,
+      "known_allosteric": true
+    },
+    {
+      "rank": 212,
+      "id": "A:298",
+      "resname": "VAL",
+      "score": 0.008812863898795688,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 213,
+      "id": "A:156",
+      "resname": "VAL",
+      "score": 0.00880675996858253,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 214,
+      "id": "A:303",
+      "resname": "VAL",
+      "score": 0.008656652615445844,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 215,
+      "id": "A:212",
+      "resname": "GLN",
+      "score": 0.008371419799693506,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 216,
+      "id": "A:242",
+      "resname": "THR",
+      "score": 0.008355083055881807,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 217,
+      "id": "A:204",
+      "resname": "VAL",
+      "score": 0.00823468138980657,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 218,
+      "id": "A:321",
+      "resname": "GLN",
+      "score": 0.008028070637814086,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 219,
+      "id": "A:145",
+      "resname": "GLU",
+      "score": 0.007887038811427018,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 220,
+      "id": "A:322",
+      "resname": "ASP",
+      "score": 0.0076206696734589675,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 221,
+      "id": "A:300",
+      "resname": "THR",
+      "score": 0.007487882634448771,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 222,
+      "id": "A:313",
+      "resname": "GLU",
+      "score": 0.007238394459493392,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 223,
+      "id": "A:259",
+      "resname": "GLY",
+      "score": 0.007023312623710904,
+      "degree": 15,
+      "known_allosteric": false
+    },
+    {
+      "rank": 224,
+      "id": "A:157",
+      "resname": "LYS",
+      "score": 0.0069282413880439675,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 225,
+      "id": "A:97",
+      "resname": "TYR",
+      "score": 0.0068089274014445575,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 226,
+      "id": "A:59",
+      "resname": "ASP",
+      "score": 0.006748407720745102,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 227,
+      "id": "A:360",
+      "resname": "LEU",
+      "score": 0.006534478021223261,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 228,
+      "id": "A:146",
+      "resname": "LYS",
+      "score": 0.006496765070924504,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 229,
+      "id": "A:182",
+      "resname": "LEU",
+      "score": 0.006240267018865256,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 230,
+      "id": "A:209",
+      "resname": "GLU",
+      "score": 0.006147463616075218,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 231,
+      "id": "A:181",
+      "resname": "ARG",
+      "score": 0.006127740471164833,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 232,
+      "id": "A:325",
+      "resname": "GLY",
+      "score": 0.00597220242747532,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 233,
+      "id": "A:243",
+      "resname": "ILE",
+      "score": 0.005942025684523693,
+      "degree": 16,
+      "known_allosteric": false
+    },
+    {
+      "rank": 234,
+      "id": "A:326",
+      "resname": "GLY",
+      "score": 0.005911423904527635,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 235,
+      "id": "A:202",
+      "resname": "ILE",
+      "score": 0.0058233980215884,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 236,
+      "id": "A:208",
+      "resname": "ASP",
+      "score": 0.005762991506042653,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 237,
+      "id": "A:199",
+      "resname": "LEU",
+      "score": 0.005746868608657898,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 238,
+      "id": "A:94",
+      "resname": "ILE",
+      "score": 0.005580512461395421,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 239,
+      "id": "A:173",
+      "resname": "ASN",
+      "score": 0.0054874253999057775,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 240,
+      "id": "A:196",
+      "resname": "ILE",
+      "score": 0.0054511091637421275,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 241,
+      "id": "A:302",
+      "resname": "LEU",
+      "score": 0.0053279178036407865,
+      "degree": 12,
+      "known_allosteric": false
+    },
+    {
+      "rank": 242,
+      "id": "A:180",
+      "resname": "GLU",
+      "score": 0.0052842796883627524,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 243,
+      "id": "A:201",
+      "resname": "GLU",
+      "score": 0.005224630566627535,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 244,
+      "id": "A:310",
+      "resname": "PRO",
+      "score": 0.0048679476190382,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 245,
+      "id": "A:61",
+      "resname": "SER",
+      "score": 0.004866424051075967,
+      "degree": 4,
+      "known_allosteric": false
+    },
+    {
+      "rank": 246,
+      "id": "A:184",
+      "resname": "MET",
+      "score": 0.004843164893954912,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 247,
+      "id": "A:311",
+      "resname": "TYR",
+      "score": 0.004771766267044463,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 248,
+      "id": "A:363",
+      "resname": "PRO",
+      "score": 0.0047524284097924035,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 249,
+      "id": "A:60",
+      "resname": "LYS",
+      "score": 0.004720602716652117,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 250,
+      "id": "A:327",
+      "resname": "ARG",
+      "score": 0.004443460941252583,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 251,
+      "id": "A:200",
+      "resname": "GLU",
+      "score": 0.004398829353006594,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 252,
+      "id": "A:96",
+      "resname": "GLY",
+      "score": 0.004222810553685287,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 253,
+      "id": "A:301",
+      "resname": "ALA",
+      "score": 0.004193042353863561,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 254,
+      "id": "A:95",
+      "resname": "MET",
+      "score": 0.0040335236831331904,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 255,
+      "id": "A:206",
+      "resname": "ASN",
+      "score": 0.0038157875098178756,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 256,
+      "id": "A:312",
+      "resname": "ARG",
+      "score": 0.003722654809059949,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 257,
+      "id": "A:58",
+      "resname": "ALA",
+      "score": 0.003710231990644584,
+      "degree": 4,
+      "known_allosteric": false
+    },
+    {
+      "rank": 258,
+      "id": "A:366",
+      "resname": "ASN",
+      "score": 0.0036993458516013517,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 259,
+      "id": "A:57",
+      "resname": "LEU",
+      "score": 0.0034088392955138286,
+      "degree": 3,
+      "known_allosteric": false
+    },
+    {
+      "rank": 260,
+      "id": "A:194",
+      "resname": "VAL",
+      "score": 0.003393021756260033,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 261,
+      "id": "A:147",
+      "resname": "LEU",
+      "score": 0.0033845917367580224,
+      "degree": 13,
+      "known_allosteric": false
+    },
+    {
+      "rank": 262,
+      "id": "A:193",
+      "resname": "GLY",
+      "score": 0.003332928931522257,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 263,
+      "id": "A:17",
+      "resname": "LYS",
+      "score": 0.0032163294003979504,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 264,
+      "id": "A:258",
+      "resname": "ILE",
+      "score": 0.003140567415479147,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 265,
+      "id": "A:177",
+      "resname": "ASP",
+      "score": 0.00311191531003457,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 266,
+      "id": "A:203",
+      "resname": "THR",
+      "score": 0.0031072062159029396,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 267,
+      "id": "A:183",
+      "resname": "GLN",
+      "score": 0.003099067831590134,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 268,
+      "id": "A:362",
+      "resname": "LYS",
+      "score": 0.0030044921548305742,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 269,
+      "id": "A:198",
+      "resname": "GLY",
+      "score": 0.0029216013800558637,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 270,
+      "id": "A:148",
+      "resname": "THR",
+      "score": 0.0024483537607931606,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 271,
+      "id": "A:192",
+      "resname": "ARG",
+      "score": 0.0024315034381820117,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 272,
+      "id": "A:155",
+      "resname": "SER",
+      "score": 0.0024050594200488973,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 273,
+      "id": "A:304",
+      "resname": "GLU",
+      "score": 0.00230518557006258,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 274,
+      "id": "A:309",
+      "resname": "VAL",
+      "score": 0.0022933870831956353,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 275,
+      "id": "A:197",
+      "resname": "LYS",
+      "score": 0.002228709152946604,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 276,
+      "id": "A:175",
+      "resname": "SER",
+      "score": 0.002138659738348368,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 277,
+      "id": "A:244",
+      "resname": "HIS",
+      "score": 0.0020885226990817653,
+      "degree": 10,
+      "known_allosteric": false
+    },
+    {
+      "rank": 278,
+      "id": "A:205",
+      "resname": "HIS",
+      "score": 0.0020391005911954943,
+      "degree": 4,
+      "known_allosteric": false
+    },
+    {
+      "rank": 279,
+      "id": "A:364",
+      "resname": "GLU",
+      "score": 0.001937258664893572,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 280,
+      "id": "A:245",
+      "resname": "MET",
+      "score": 0.0018608691061857345,
+      "degree": 14,
+      "known_allosteric": false
+    },
+    {
+      "rank": 281,
+      "id": "A:149",
+      "resname": "ASP",
+      "score": 0.0017918550845214894,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 282,
+      "id": "A:365",
+      "resname": "VAL",
+      "score": 0.001760484310225848,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 283,
+      "id": "A:154",
+      "resname": "PHE",
+      "score": 0.0017392315324018485,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 284,
+      "id": "A:257",
+      "resname": "LYS",
+      "score": 0.0016677343181065636,
+      "degree": 11,
+      "known_allosteric": false
+    },
+    {
+      "rank": 285,
+      "id": "A:305",
+      "resname": "ARG",
+      "score": 0.0016388516917846278,
+      "degree": 4,
+      "known_allosteric": false
+    },
+    {
+      "rank": 286,
+      "id": "A:195",
+      "resname": "ILE",
+      "score": 0.0014192555811007915,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 287,
+      "id": "A:306",
+      "resname": "THR",
+      "score": 0.0013971588198282891,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 288,
+      "id": "A:190",
+      "resname": "ASN",
+      "score": 0.0012356292432281434,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 289,
+      "id": "A:185",
+      "resname": "PHE",
+      "score": 0.0012247685010800572,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 290,
+      "id": "A:174",
+      "resname": "PRO",
+      "score": 0.0012219272268146062,
+      "degree": 4,
+      "known_allosteric": false
+    },
+    {
+      "rank": 291,
+      "id": "A:150",
+      "resname": "ASN",
+      "score": 0.0012167541149675706,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 292,
+      "id": "A:308",
+      "resname": "HIS",
+      "score": 0.0010769986419432137,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 293,
+      "id": "A:186",
+      "resname": "ASP",
+      "score": 0.0008049913477766664,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 294,
+      "id": "A:187",
+      "resname": "ASP",
+      "score": 0.0007969422615677997,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 295,
+      "id": "A:151",
+      "resname": "GLY",
+      "score": 0.0007473802790602638,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 296,
+      "id": "A:191",
+      "resname": "LYS",
+      "score": 0.0006943546465257365,
+      "degree": 3,
+      "known_allosteric": false
+    },
+    {
+      "rank": 297,
+      "id": "A:152",
+      "resname": "THR",
+      "score": 0.0006690064216953312,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 298,
+      "id": "A:256",
+      "resname": "VAL",
+      "score": 0.0006555129781679492,
+      "degree": 8,
+      "known_allosteric": false
+    },
+    {
+      "rank": 299,
+      "id": "A:176",
+      "resname": "SER",
+      "score": 0.0006321072235219277,
+      "degree": 3,
+      "known_allosteric": false
+    },
+    {
+      "rank": 300,
+      "id": "A:246",
+      "resname": "LYS",
+      "score": 0.00048494988564286117,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 301,
+      "id": "A:153",
+      "resname": "GLU",
+      "score": 0.0004293836291497372,
+      "degree": 5,
+      "known_allosteric": false
+    },
+    {
+      "rank": 302,
+      "id": "A:247",
+      "resname": "GLU",
+      "score": 0.00034355780348198605,
+      "degree": 9,
+      "known_allosteric": false
+    },
+    {
+      "rank": 303,
+      "id": "A:307",
+      "resname": "PRO",
+      "score": 0.00023373416183415302,
+      "degree": 2,
+      "known_allosteric": false
+    },
+    {
+      "rank": 304,
+      "id": "A:255",
+      "resname": "LEU",
+      "score": 0.00020109991685867003,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 305,
+      "id": "A:189",
+      "resname": "ARG",
+      "score": 0.000197936487164771,
+      "degree": 3,
+      "known_allosteric": false
+    },
+    {
+      "rank": 306,
+      "id": "A:188",
+      "resname": "PRO",
+      "score": 0.0001573219260643191,
+      "degree": 3,
+      "known_allosteric": false
+    },
+    {
+      "rank": 307,
+      "id": "A:254",
+      "resname": "GLU",
+      "score": 0.00011367980156731115,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 308,
+      "id": "A:248",
+      "resname": "THR",
+      "score": 6.7788577573556e-05,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 309,
+      "id": "A:249",
+      "resname": "THR",
+      "score": 4.0507927915659434e-05,
+      "degree": 7,
+      "known_allosteric": false
+    },
+    {
+      "rank": 310,
+      "id": "A:253",
+      "resname": "GLU",
+      "score": 2.7746105786827416e-05,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 311,
+      "id": "A:252",
+      "resname": "GLY",
+      "score": 1.574530919762095e-05,
+      "degree": 6,
+      "known_allosteric": false
+    },
+    {
+      "rank": 312,
+      "id": "A:251",
+      "resname": "ASP",
+      "score": 5.7202210981452195e-06,
+      "degree": 4,
+      "known_allosteric": false
+    },
+    {
+      "rank": 313,
+      "id": "A:250",
+      "resname": "ILE",
+      "score": 4.274805302586713e-06,
+      "degree": 3,
+      "known_allosteric": false
+    }
+  ],
+  "files": {
+    "graphml": "4BBG.graphml",
+    "ranking_csv": "4BBG_ranking.csv",
+    "parameters": "4BBG_parameters.json",
+    "result": "4BBG_result.json",
+    "qvc_csv": "4BBG_quantum_vs_classical.csv",
+    "hump_csv": "4BBG_hump.csv",
+    "hump_png": "4BBG_hump.png",
+    "hump_svg": "4BBG_hump.svg",
+    "allosteric_csv": "4BBG_allosteric.csv",
+    "allosteric_png": "4BBG_allosteric.png",
+    "allosteric_svg": "4BBG_allosteric.svg",
+    "adjusted_csv": "4BBG_adjusted.csv",
+    "adjusted_png": "4BBG_adjusted.png",
+    "adjusted_svg": "4BBG_adjusted.svg",
+    "energy_weighted_csv": "4BBG_energy_weighted.csv"
+  },
+  "parameters": {
+    "source": null,
+    "chains": null,
+    "model": 0,
+    "method": "cb",
+    "cutoff": 8.0,
+    "min_seq_sep": 0,
+    "weighted": false,
+    "site_energy": "hydropathy",
+    "scale": 3.0,
+    "seed": 0,
+    "gammas": [
+      0.0,
+      0.01,
+      0.01778,
+      0.03162,
+      0.05623,
+      0.1,
+      0.1778,
+      0.3162,
+      0.5623,
+      1.0,
+      1.778,
+      3.162,
+      5.623,
+      10.0,
+      17.78,
+      31.62,
+      56.23,
+      100.0
+    ],
+    "tmax": 30.0,
+    "ntime": 200,
+    "distal_fraction": 0.5,
+    "control": true,
+    "control_seeds": 5,
+    "permutations": 10000,
+    "labels": "auto",
+    "active": null,
+    "allosteric": null,
+    "site": null,
+    "input": "4BBG",
+    "chains_used": [
+      "A"
+    ],
+    "walk_from": "active site",
+    "distal_min_hops": 4,
+    "labels_used": {
+      "origin": "ALLO",
+      "entry": "4BBG",
+      "pdb": "4BBG",
+      "protein": "Kinesin-like protein KIF11",
+      "allosteric_ligand": "V02 A1370",
+      "citation": "Wu N, Stromich L, Yaliraki SN. Prediction of allosteric sites and signaling: insights from benchmarking datasets. Patterns 3(1), 100408 (2022), doi:10.1016/j.patter.2021.100408, Table S2."
+    },
+    "code_version": {
+      "pipeline_sha256": "401cc4f784c961de",
+      "git_commit": "c0c8fbd800fca658d2d664ebae94c1334c9d4bed",
+      "git_dirty": false
+    },
+    "created_utc": "2026-09-24T05:06:40Z"
+  }
+}
