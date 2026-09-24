@@ -26,6 +26,8 @@ REPLICATION = ["2YHD", "4HO6", "2VD3", "3PXF", "1ZDS"]            # pre-register
 PROTEINS = DEVELOPMENT + VALIDATION + REPLICATION
 HELDOUT = VALIDATION + REPLICATION
 SAME_PROTEIN = {"3ZCW": "4BBG", "3HFR": "4B1F", "3M3F": "3LSW"}   # other structures of one protein
+KEY_PROTEINS = ["1T49", "3PYY", "3H30", "2RD5"]    # the main-text figure: one of each kind of result
+MARK = {"validation": "*", "replication": "†"}          # set marks in figure titles
 SET_OF = {**{p: "development" for p in DEVELOPMENT}, **{p: "validation" for p in VALIDATION},
           **{p: "replication" for p in REPLICATION}}
 SENSITIVITY = ["1T49", "1IWH"]                   # cutoff x scale grid for the two with a noise hump
@@ -334,7 +336,7 @@ def fig_transport():
         ax.plot(g, t["distal_mean"], color="#111", lw=2, marker="o", ms=3, mec="white", mew=0.5,
                 label="hydropathy site energies")
         st = t["stats"]
-        ax.set_title(f"{pid}{'*' if pid in VALIDATION else ''}: peak at γ = {st['peak_gamma']:g}", fontsize=10.5)
+        ax.set_title(f"{pid}{MARK.get(SET_OF[pid], '')}: peak at γ = {st['peak_gamma']:g}", fontsize=10.5)
     for ax in axs.flat[len(PROTEINS) - 5:len(PROTEINS)]:
         ax.set_xlabel("dephasing rate γ")
         ax.xaxis.set_tick_params(labelbottom=True)
@@ -346,14 +348,16 @@ def fig_transport():
     plt.close(fig)
 
 
-def fig_beyond_distance():
-    """AUC beyond distance vs noise for every protein: quantum walk, random-energy band, classical walk."""
+def fig_beyond_distance(proteins=None, name="beyond_distance_all"):
+    """AUC beyond distance vs noise: quantum walk, random-energy band, both classical walks (all proteins,
+    or a chosen few for a larger figure)."""
+    proteins = proteins or PROTEINS
     plt = _plt()
-    rows = -(-len(PROTEINS) // 2)
+    rows = -(-len(proteins) // 2)
     fig, axs = plt.subplots(rows, 2, figsize=(12, 3.6 * rows + 0.5), sharex=True, sharey=True, squeeze=False)
-    for ax in axs.flat[len(PROTEINS):]:
+    for ax in axs.flat[len(proteins):]:
         ax.set_visible(False)
-    for ax, pid in zip(axs.flat, PROTEINS):
+    for ax, pid in zip(axs.flat, proteins):
         r = load(pid, "result")
         g, d = np.array(r["gammas"]), r["allosteric"]["adjusted"]
         m, sd = np.array(d["control"]["mean"]), np.array(d["control"]["sd"])
@@ -370,7 +374,7 @@ def fig_beyond_distance():
         ax.text(0.012, 0.506, "closeness alone", fontsize=8.5, color="#777")
         st = d["stats"]
         pv = d["significance"]["p_value"]
-        ax.set_title(f"{pid}{'*' if pid in VALIDATION else ''} ({r['summary']['residues']} residues): best {st['peak_value']:.3f} "
+        ax.set_title(f"{pid}{MARK.get(SET_OF[pid], '')} ({r['summary']['residues']} residues): best {st['peak_value']:.3f} "
                      f"at γ = {st['peak_gamma']:g}, p {'< 0.001' if pv < 0.001 else f'= {pv:.3f}'}", fontsize=10.5)
         ax.set_ylim(0.2, 1.0)
     for ax in axs[-1]:
@@ -379,7 +383,46 @@ def fig_beyond_distance():
         ax.set_ylabel("AUC beyond distance")
     fig.legend(*axs[0, 0].get_legend_handles_labels(), loc="upper center", ncol=2, frameon=False)
     fig.tight_layout(rect=(0, 0, 1, 1 - 0.18 / rows))
-    _save(fig, "beyond_distance")
+    _save(fig, name)
+    plt.close(fig)
+
+
+def fig_methods():
+    """Every method's AUC beyond distance on every protein; filled markers are significant (p < 0.05)."""
+    ext = os.path.join(HERE, "external.csv")
+    if not os.path.isfile(ext):
+        return
+    plt = _plt()
+    with open(ext) as f:
+        erows = {r["pdb"]: r for r in csv.DictReader(f)}
+    with open(os.path.join(HERE, "proteins.csv")) as f:
+        prows = {r["pdb"]: r for r in csv.DictReader(f)}
+    methods = [("quantum walk", "o", lambda p: (prows[p]["beyond_distance_best"], prows[p]["p_value"])),
+               ("energy-weighted classical", "s", lambda p: (prows[p]["energy_weighted_best"], prows[p]["energy_weighted_p_value"])),
+               ("plain classical", "D", lambda p: (prows[p]["classical_best"], prows[p]["classical_p_value"])),
+               ("closeness", "^", lambda p: (erows[p]["closeness_beyond"], erows[p]["closeness_p"])),
+               ("betweenness", "v", lambda p: (erows[p]["betweenness_beyond"], erows[p]["betweenness_p"])),
+               ("perturbation response", "P", lambda p: (erows[p]["prs_beyond"], erows[p]["prs_p"]))]
+    fig, ax = plt.subplots(figsize=(10, 0.42 * len(PROTEINS) + 1.6))
+    ys = np.arange(len(PROTEINS))[::-1]
+    for k, (label, mk, get) in enumerate(methods):
+        off = (k - (len(methods) - 1) / 2) * 0.11
+        for y, pid in zip(ys, PROTEINS):
+            v, pv = (float(x) for x in get(pid))
+            ax.scatter(v, y + off, marker=mk, s=34, edgecolors="#111", linewidths=0.9,
+                       facecolors="#111" if pv < 0.05 else "white", zorder=3)
+    ax.axvline(0.5, color="#bbb", lw=1, zorder=1)
+    for y in ys[:-1]:
+        ax.axhline(y - 0.5, color="#eee", lw=0.8, zorder=0)
+    ax.set_yticks(ys, [f"{p}{MARK.get(SET_OF[p], '')}" for p in PROTEINS])
+    ax.set_ylim(-0.6, len(PROTEINS) - 0.4)
+    ax.set_xlabel("AUC beyond distance (0.5 = distance alone)")
+    from matplotlib.lines import Line2D
+    keys = [Line2D([], [], marker=mk, ls="", mfc="white", mec="#111", ms=7, label=label) for label, mk, _ in methods]
+    keys.append(Line2D([], [], marker="o", ls="", mfc="#111", mec="#111", ms=7, label="filled: p < 0.05"))
+    fig.legend(handles=keys, loc="upper center", ncol=4, frameon=False, fontsize=9)
+    fig.tight_layout(rect=(0, 0, 1, 1 - 0.75 / (0.42 * len(PROTEINS) + 1.6)))
+    _save(fig, "methods")
     plt.close(fig)
 
 
@@ -478,6 +521,8 @@ def main():
     write_numbers(rows)
     for make in (fig_workflow, fig_transport, fig_beyond_distance, fig_sensitivity, fig_map):
         make()
+    fig_beyond_distance(KEY_PROTEINS, "beyond_distance")
+    fig_methods()
     print("\nWrote results/proteins.csv/.md, results/sensitivity_*.csv/.md and results/figures/")
 
 
